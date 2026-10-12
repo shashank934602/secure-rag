@@ -18,7 +18,6 @@ Every bug, task, open question, and piece of tech debt gets an id here. Progress
 |----|-------|------|-------|-----|--------|--------|-------|
 | ISS-005 | Workflow skills missing: `/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/pr`, `/retro`, `/teach`, `/handoff` | question | 0 | P2 | open | 2026-10-12 | Plugin is installed but only `grilling`, `tdd`, `code-review`, `codebase-design`, `domain-modeling`, `research`, `prototype`, `diagnosing-bugs` are available. Update the plugin, or adapt `ai-workflow-rules.md`. |
 | ISS-014 | OpenAI account has no credits: embeddings (and the OpenAI chat-swap check) fail with `insufficient_quota` | bug | 1 | P1 | open | 2026-10-12 | Code is provider-agnostic; fix is billing or config. Options: add OpenAI credits; or switch `EMBEDDING_MODEL` to Google (free tier, key present) or local `bge-small-en-v1.5` (free, 384-d, needs torch). Groq chat works. Blocks the real-corpus retrieval check and the D8 swap proof. |
-| ISS-013 | Phase 1 slice 5: CLI (`--debug`) + live smoke test | task | 1 | P1 | in-progress | 2026-10-12 | Spec 01 D10, D11. |
 
 ## Closed
 
@@ -35,3 +34,4 @@ Every bug, task, open question, and piece of tech debt gets an id here. Progress
 | ISS-010 | Phase 1 slice 2: load MD + PDF, chunk per page (400/50 tokens) | task | 1 | 2026-10-12 | 2026-10-12 | `app/ingestion/loaders.py` + `chunking.py`, typed `Page`/`Chunk` in `app/domain.py`; 10 tests; real corpus → 11 docs, 13 pages, 23 chunks. |
 | ISS-011 | Phase 1 slice 3: embeddings factory + in-memory top-5 search | task | 1 | 2026-10-12 | 2026-10-12 | `make_embeddings('provider:model')` + `ChunkIndex.search` with cosine scores; 6 offline tests. Real-corpus check pending on ISS-014. |
 | ISS-012 | Phase 1 slice 4: answer + citation validation (TDD, fake LLM) | task | 1 | 2026-10-12 | 2026-10-12 | `Answerer.answer(question) -> AnswerResult`; prompt `answer_v1` with the No-Answer sentence substituted from one constant; citations parsed (multi-id brackets), deduplicated, and checked against retrieved pages; config-only provider swap tested offline. 13 tests. |
+| ISS-013 | Phase 1 slice 5: CLI (`--debug`) + live smoke test | task | 1 | 2026-10-12 | 2026-10-12 | `python -m app.cli "question" [--debug]`; exit 0 answered/No-Answer, 1 on error; 4 CLI tests; 2 live tests (`-m live`) written, currently fail on ISS-014. |

@@ -39,6 +39,8 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 - Answering: prompt `answer_v1`, `Answerer.answer(question)` returning `AnswerResult`; any missing or unretrieved citation, or the No-Answer sentence, gives a No-Answer (ISS-012).
 - `build_answerer(settings)` wires corpus, embeddings, and the chat model named in config; swapping provider needs only `CHAT_MODEL` (ISS-012).
+- CLI `python -m app.cli "question" [--debug]`: answer plus sources; `--debug` adds status, prompt version, and retrieved chunks with scores (ISS-013).
+- Live smoke tests against real models, run only with `uv run pytest -m live` (ISS-013).
 
 ### Fixed (Phase 1)
 
