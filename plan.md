@@ -94,11 +94,12 @@ contracts) and is **safe enough to ship**:
 - Generate it with an LLM, then edit by hand so the facts are consistent (the eval depends on known answers).
 - A **golden set** of questions with expected answers and sources, written while you create the corpus.
 
-### 4.6 Claude Code setup
+### 4.6 Agent tooling setup
 
 - Install Matt Pocock's skills: `claude plugin install mattpocock-skills@claude-plugins-official`
 - Run `/setup-matt-pocock-skills` once in the project repo (after Phase 0 step 1).
-- Agents read `CLAUDE.md` → `context/` → `docs/` before working (pattern from Arch-AI).
+- Agents read `AGENTS.md` → `context/` → `docs/` before working (pattern from Arch-AI).
+- Work is tracked in three places: `context/progress-tracker.md` (state), `context/issue-tracker.md` (open work), `CHANGELOG.md` (changes).
 
 ---
 

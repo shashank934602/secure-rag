@@ -8,10 +8,10 @@ Spec-driven and incremental. The context files say what to build and where we ar
 |------|-------|--------|
 | 1. Align | `/grill-with-docs` | Resolved questions; new terms in `GLOSSARY.md`; ADRs for hard-to-reverse decisions |
 | 2. Spec | `/to-spec` | `context/feature-specs/NN-slug.md` in the format below |
-| 3. Slice | `/to-tickets` | Vertical-slice tickets with blocking edges |
+| 3. Slice | `/to-tickets` | Vertical-slice tickets with blocking edges, each logged as an `ISS-NNN` task in `issue-tracker.md` |
 | 4. Build | `/implement` (drives `/tdd` at the agreed seams) | Code + tests, one slice at a time |
 | 5. Review | `/code-review` | Standards review + spec-conformance review |
-| 6. Ship | `/pr` | PR body with evidence (eval numbers for anything touching retrieval, guards, or prompts) |
+| 6. Ship | `/pr` | PR body with evidence (eval numbers for anything touching retrieval, guards, or prompts); `CHANGELOG.md` entry; issues closed |
 | 7. Reflect | `/retro` | Improvements to these context files and tooling |
 
 Use as needed:
@@ -56,7 +56,8 @@ Agree these before writing tests; test only here.
 ## Handling missing requirements
 
 - Ambiguous → resolve it in the relevant context file (or with `/grill-with-docs`) before implementing.
-- Missing → add it to **Open questions** in `progress-tracker.md` before continuing.
+- Missing → open a `question` issue in `issue-tracker.md` before continuing.
+- Found a bug or shortcut you can't fix now → open a `bug` or `debt` issue; don't leave TODOs untracked.
 
 ## Before moving to the next unit
 
@@ -64,3 +65,4 @@ Agree these before writing tests; test only here.
 2. No invariant in `docs/architecture.md` §11 is violated.
 3. The eval harness (from Phase 2 on) shows no regression, or the regression is explained.
 4. `progress-tracker.md` reflects what was actually built.
+5. `CHANGELOG.md` has an entry under **Unreleased**, and the unit's issues are closed with a resolution.

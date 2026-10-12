@@ -1,0 +1,33 @@
+# Changelog
+
+All notable changes to this project. Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## How to use
+
+- Add entries under **Unreleased** in the same commit as the change, grouped as
+  **Added** · **Changed** · **Fixed** · **Removed** · **Security**.
+- One line per change, written for a reader of the repo; end with issue ids where relevant (`ISS-006`).
+- Anything touching retrieval, guards, or prompts includes the eval delta (from Phase 2 on).
+- **Releases follow phases:** when a phase's "Done when" passes, rename **Unreleased** to
+  `## [0.N.0] — YYYY-MM-DD — Phase N: <name>`, tag the commit `v0.N.0`, and start a new empty **Unreleased**.
+
+## [Unreleased]
+
+### Added
+
+- Project setup: `uv` project pinned to Python 3.12, Phase 1 dependencies, `uv.lock`.
+- `.gitignore` and `.env.example`; secrets stay in an untracked `.env`.
+- `AGENTS.md` as the agent entry point (read order, tracking rules, git rules, commands).
+- `context/issue-tracker.md` and this changelog for tracking work and changes.
+- Phase 0 decisions recorded: embedding model, reranker hardware, sample corpus, separate repo (ISS-001–ISS-004).
+
+## Design — 2026-10-10
+
+### Added
+
+- `docs/architecture.md`: HLD, ingestion, LangGraph query flow, latency budget, guardrails, data model, API, eval pipeline, deployment, invariants, limitations.
+- ADR-0001 Postgres + pgvector as the single store.
+- ADR-0002 ACL copied onto chunks, enforced by RLS and query filter.
+- ADR-0003 No token streaming; output guard sees the full answer first.
+- ADR-0004 Store raw text; mask PII at query time by permission.
+- `GLOSSARY.md`, `plan.md`, context files, and the Phase 1 spec.

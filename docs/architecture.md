@@ -553,9 +553,10 @@ Rules that every change must keep true. A change that breaks one needs an ADR fi
 
 ```
 secure-rag-assistant/
-├── CLAUDE.md                   # agent entry point: read order + skills
+├── AGENTS.md                   # agent entry point: read order, tracking, git rules
+├── CHANGELOG.md                # what changed, released per phase
 ├── GLOSSARY.md                 # domain language
-├── context/                    # living project state (overview, standards, workflow, progress, specs)
+├── context/                    # living project state (overview, standards, workflow, progress, issues, specs)
 ├── docs/
 │   ├── architecture.md         # this file
 │   └── adr/                    # architecture decision records
