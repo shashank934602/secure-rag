@@ -35,6 +35,11 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - Golden set `eval/datasets/golden.jsonl`: 10 questions, 7 answerable (2 need two documents), 3 unanswerable (ISS-009).
 - Loading and chunking: Markdown and PDF files → `Page` records with doc id and 1-based page → 400-token chunks (cl100k, 50 overlap) with ids `doc_id:page:index`, never spanning pages (ISS-010).
 - `app/config.py` settings (`pydantic-settings`), `app/domain.py` glossary types, pytest and ruff configuration (ISS-010).
+- Embeddings factory `make_embeddings("provider:model")` and in-memory `ChunkIndex` returning top-k chunks with cosine scores; `numpy` added (ISS-011).
+
+### Fixed (Phase 1)
+
+- API keys in `.env` are now exported to the process environment, where model clients read them (ISS-011).
 
 ## Design — 2026-10-10
 

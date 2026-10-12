@@ -17,8 +17,8 @@ Every bug, task, open question, and piece of tech debt gets an id here. Progress
 | Id | Title | Type | Phase | Pri | Status | Opened | Notes |
 |----|-------|------|-------|-----|--------|--------|-------|
 | ISS-005 | Workflow skills missing: `/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/pr`, `/retro`, `/teach`, `/handoff` | question | 0 | P2 | open | 2026-10-12 | Plugin is installed but only `grilling`, `tdd`, `code-review`, `codebase-design`, `domain-modeling`, `research`, `prototype`, `diagnosing-bugs` are available. Update the plugin, or adapt `ai-workflow-rules.md`. |
-| ISS-011 | Phase 1 slice 3: embeddings factory + in-memory top-5 search | task | 1 | P1 | in-progress | 2026-10-12 | Spec 01 D12. |
-| ISS-012 | Phase 1 slice 4: answer + citation validation (TDD, fake LLM) | task | 1 | P1 | blocked | 2026-10-12 | Blocked on ISS-011. Spec 01 D4, D5, D8, D14. |
+| ISS-014 | OpenAI account has no credits: embeddings (and the OpenAI chat-swap check) fail with `insufficient_quota` | bug | 1 | P1 | open | 2026-10-12 | Code is provider-agnostic; fix is billing or config. Options: add OpenAI credits; or switch `EMBEDDING_MODEL` to Google (free tier, key present) or local `bge-small-en-v1.5` (free, 384-d, needs torch). Groq chat works. Blocks the real-corpus retrieval check and the D8 swap proof. |
+| ISS-012 | Phase 1 slice 4: answer + citation validation (TDD, fake LLM) | task | 1 | P1 | in-progress | 2026-10-12 | Spec 01 D4, D5, D8, D14. |
 | ISS-013 | Phase 1 slice 5: CLI (`--debug`) + live smoke test | task | 1 | P1 | blocked | 2026-10-12 | Blocked on ISS-012. Spec 01 D10, D11. |
 
 ## Closed
@@ -34,3 +34,4 @@ Every bug, task, open question, and piece of tech debt gets an id here. Progress
 | ISS-006 | Spec 01 chunk size: "~800 tokens" vs `RecursiveCharacterTextSplitter` (counts characters) | question | 1 | 2026-10-12 | 2026-10-12 | Tokens via `tiktoken`; 400 tokens / 50 overlap, per page, configurable (spec 01 D1, D13). |
 | ISS-009 | Phase 1 slice 1: sample corpus + golden set | task | 1 | 2026-10-12 | 2026-10-12 | 11 documents (10 MD + 3-page PDF, ~5.9k tokens, 23 chunks) and 10-question golden set; reviewed and approved by user. |
 | ISS-010 | Phase 1 slice 2: load MD + PDF, chunk per page (400/50 tokens) | task | 1 | 2026-10-12 | 2026-10-12 | `app/ingestion/loaders.py` + `chunking.py`, typed `Page`/`Chunk` in `app/domain.py`; 10 tests; real corpus → 11 docs, 13 pages, 23 chunks. |
+| ISS-011 | Phase 1 slice 3: embeddings factory + in-memory top-5 search | task | 1 | 2026-10-12 | 2026-10-12 | `make_embeddings('provider:model')` + `ChunkIndex.search` with cosine scores; 6 offline tests. Real-corpus check pending on ISS-014. |

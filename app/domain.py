@@ -24,3 +24,12 @@ class Chunk(BaseModel):
     source: str
     page: int
     text: str
+
+
+class ScoredChunk(BaseModel):
+    """A chunk returned by search, with its similarity to the question (higher is closer)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    chunk: Chunk
+    score: float
