@@ -20,6 +20,11 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - `AGENTS.md` as the agent entry point (read order, tracking rules, git rules, commands).
 - `context/issue-tracker.md` and this changelog for tracking work and changes.
 - Phase 0 decisions recorded: embedding model, reranker hardware, sample corpus, separate repo (ISS-001–ISS-004).
+- Repository published at `shashank934602/secure-rag` (ISS-007).
+
+### Changed
+
+- Docs describe agent tooling neutrally (ISS-008).
 
 ## Design — 2026-10-10
 

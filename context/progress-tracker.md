@@ -4,13 +4,13 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 0 — Setup**, nearly done. Remaining: ISS-007 (push to GitHub), ISS-005 (workflow skills), ISS-008 (doc cleanup).
+**Phase 0 — Setup**, nearly done. Remaining: ISS-005 (workflow skills).
 Next: **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`).
 
 ## Completed
 
 - **Phase 0 — Setup** (2026-10-12)
-  - Own Git repo (`main` branch) in this folder; remote `https://github.com/shashank934602/secure-rag` (not yet pushed).
+  - Own Git repo (`main` branch) in this folder, pushed to `https://github.com/shashank934602/secure-rag`.
   - `uv` project, Python pinned to 3.12 (`.python-version`, `requires-python = ">=3.12,<3.13"`).
   - Phase 1 deps: `langchain`, `langchain-core`, `langchain-openai`, `langchain-groq`, `langchain-text-splitters`, `pypdf`, `pydantic`, `pydantic-settings`, `python-dotenv`. Dev: `pytest`, `ruff`.
   - `.env` (gitignored) with Groq, OpenAI, Hugging Face, Google, Mistral keys; `.env.example` committed.
@@ -18,7 +18,7 @@ Next: **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pi
   - Tracking: `AGENTS.md` (agent entry point, Arch-AI pattern), `context/issue-tracker.md`, `CHANGELOG.md`.
 - **Design** (2026-10-10)
   - `docs/architecture.md`: HLD, ingestion, LangGraph flow, sequence, latency budget, guardrails, data model, API, eval pipeline, deployment, invariants, limitations.
-  - Independent review (Sonnet) applied: latency/streaming contradiction, ACL staleness + RLS, PII masking moved to query time, audit hash chain + start row, tenant-scoped audit/upload authorization, cache rules, structural injection controls, hybrid search, early eval harness.
+  - Independent design review applied: latency/streaming contradiction, ACL staleness + RLS, PII masking moved to query time, audit hash chain + start row, tenant-scoped audit/upload authorization, cache rules, structural injection controls, hybrid search, early eval harness.
   - ADRs 0001–0004, `GLOSSARY.md`, context files.
 
 ## Decisions (Phase 0, from `plan.md` §9)
@@ -32,10 +32,9 @@ Next: **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pi
 
 ## Open questions
 
-Tracked in `context/issue-tracker.md` (open: ISS-005 … ISS-008).
+Tracked in `context/issue-tracker.md` (open: ISS-005, ISS-006).
 
 ## Next steps
 
-1. ISS-008: decide on remaining AI-tool mentions, then ISS-007: push to GitHub.
-2. ISS-005: resolve the workflow-skills question.
-3. Grill Phase 1 (includes ISS-006), then implement `01-basic-rag-pipeline.md`.
+1. Grill Phase 1 (includes ISS-006), then implement `01-basic-rag-pipeline.md`.
+2. ISS-005: resolve the workflow-skills question (Phase 1 uses the available `grilling` / `tdd` / `code-review` skills meanwhile).

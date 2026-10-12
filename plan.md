@@ -96,7 +96,7 @@ contracts) and is **safe enough to ship**:
 
 ### 4.6 Agent tooling setup
 
-- Install Matt Pocock's skills: `claude plugin install mattpocock-skills@claude-plugins-official`
+- Install the `mattpocock-skills` workflow skills plugin in your coding agent.
 - Run `/setup-matt-pocock-skills` once in the project repo (after Phase 0 step 1).
 - Agents read `AGENTS.md` → `context/` → `docs/` before working (pattern from Arch-AI).
 - Work is tracked in three places: `context/progress-tracker.md` (state), `context/issue-tracker.md` (open work), `CHANGELOG.md` (changes).
