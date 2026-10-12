@@ -5,10 +5,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 ## Current phase
 
 **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
-Slices 1–3 done (ISS-009 … ISS-011). Working on slice 4 (ISS-012): answer + citations. **Blocker:** ISS-014 (OpenAI account has no credits; embeddings fail). Phase 0 leftover: ISS-005 (workflow skills).
+Slices 1–4 done (ISS-009 … ISS-012). Working on slice 5 (ISS-013): CLI + live test. **Blocker:** ISS-014 (OpenAI account has no credits; embeddings fail). Phase 0 leftover: ISS-005 (workflow skills).
 
 ## Completed
 
+- **Phase 1 slice 4 — answer + citations** (2026-10-12, ISS-012)
+  - `app/answering/answer.py`: `Answerer.answer(question) -> AnswerResult` (status, answer, citations, retrieved, prompt_version); `build_answerer(settings)`.
+  - `app/answering/citations.py`: parse `[doc_id:page]` (also `[a:1, b:2]`), validate against retrieved pages.
+  - `app/prompts/answer_v1.md`; `NO_ANSWER` constant substituted into it.
+  - Tests: 29 passing offline (fake chat model + keyword embeddings). Not yet run against real models (ISS-014).
 - **Phase 1 slice 3 — embeddings + search** (2026-10-12, ISS-011)
   - `app/retrieval/embeddings.py`: `make_embeddings(model)` via `init_embeddings`, full dimension.
   - `app/retrieval/search.py`: `ChunkIndex(chunks, embeddings).search(question, k)` → `ScoredChunk`s, best first.

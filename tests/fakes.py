@@ -1,8 +1,29 @@
 """Test doubles for model clients. Real-model quality is measured in eval/, not here."""
 
 import re
+from typing import Any
 
 from langchain_core.embeddings import Embeddings
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
+from pydantic import Field
+
+
+class ScriptedChatModel(BaseChatModel):
+    """Returns the scripted responses in order and records every prompt it was sent."""
+
+    responses: list[str]
+    calls: list[list[BaseMessage]] = Field(default_factory=list)
+
+    def _generate(self, messages: list[BaseMessage], stop: Any = None, **kwargs: Any) -> ChatResult:
+        self.calls.append(messages)
+        text = self.responses[len(self.calls) - 1]
+        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=text))])
+
+    @property
+    def _llm_type(self) -> str:
+        return "scripted"
 
 
 class KeywordEmbeddings(Embeddings):

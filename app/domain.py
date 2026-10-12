@@ -1,5 +1,7 @@
 """Domain types shared across modules. Names follow GLOSSARY.md."""
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -33,3 +35,25 @@ class ScoredChunk(BaseModel):
 
     chunk: Chunk
     score: float
+
+
+class Citation(BaseModel):
+    """A `[doc_id:page]` reference in an answer; valid only if it points to a retrieved chunk."""
+
+    model_config = ConfigDict(frozen=True)
+
+    doc_id: str
+    page: int
+
+    def __str__(self) -> str:
+        return f"{self.doc_id}:{self.page}"
+
+
+class AnswerResult(BaseModel):
+    """The outcome of answering one question: a grounded answer with citations, or a No-Answer."""
+
+    status: Literal["answered", "no_answer"]
+    answer: str
+    citations: list[Citation]
+    retrieved: list[ScoredChunk]
+    prompt_version: str

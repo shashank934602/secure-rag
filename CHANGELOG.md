@@ -37,6 +37,9 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - `app/config.py` settings (`pydantic-settings`), `app/domain.py` glossary types, pytest and ruff configuration (ISS-010).
 - Embeddings factory `make_embeddings("provider:model")` and in-memory `ChunkIndex` returning top-k chunks with cosine scores; `numpy` added (ISS-011).
 
+- Answering: prompt `answer_v1`, `Answerer.answer(question)` returning `AnswerResult`; any missing or unretrieved citation, or the No-Answer sentence, gives a No-Answer (ISS-012).
+- `build_answerer(settings)` wires corpus, embeddings, and the chat model named in config; swapping provider needs only `CHAT_MODEL` (ISS-012).
+
 ### Fixed (Phase 1)
 
 - API keys in `.env` are now exported to the process environment, where model clients read them (ISS-011).
