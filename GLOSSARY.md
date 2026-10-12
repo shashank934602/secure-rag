@@ -26,6 +26,10 @@ _Avoid_: sharing settings, visibility
 One uploaded file at one version, with an ACL.
 _Avoid_: file, source
 
+**Doc id**:
+A document's short, human-readable identifier, the slug of its filename (e.g. `leave-policy`), unique within a tenant; the `doc_id` in citations.
+_Avoid_: document name, file id
+
 **Chunk**:
 A contiguous slice of a document's text that is embedded and retrieved as a unit; inherits the document's ACL.
 _Avoid_: passage, segment, split

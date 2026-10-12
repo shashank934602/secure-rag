@@ -136,7 +136,7 @@ flowchart TD
     L -->|DOCX| C2[Docx2txtLoader]
     L -->|MD / HTML| C3[Text / BS4 loader]
     C1 & C2 & C3 --> N[Normalize text<br/>strip headers, footers, boilerplate]
-    N --> K[Chunk<br/>~800 tokens, 100 overlap]
+    N --> K[Chunk per page<br/>400 tokens, 50 overlap, configurable]
     K --> I[Injection scan per chunk<br/>sliding 512-token windows]
     I -->|flagged| Q[Quarantine document<br/>status = quarantined, needs review]
     I -->|clean| P[Detect PII types per chunk<br/>store as metadata, text kept raw]

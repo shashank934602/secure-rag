@@ -25,6 +25,8 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 ### Changed
 
 - Docs describe agent tooling neutrally (ISS-008).
+- Phase 1 spec rewritten with grilled decisions D1–D16; chunks are 400 tokens / 50 overlap per page, measured with `tiktoken` (ISS-006).
+- Glossary: added **Doc id** (filename slug used in citations).
 
 ## Design — 2026-10-10
 

@@ -4,8 +4,8 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 0 — Setup**, nearly done. Remaining: ISS-005 (workflow skills).
-Next: **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`).
+**Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
+Working on slice 1 (ISS-009): sample corpus + golden set. Phase 0 leftover: ISS-005 (workflow skills).
 
 ## Completed
 
@@ -32,9 +32,9 @@ Next: **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pi
 
 ## Open questions
 
-Tracked in `context/issue-tracker.md` (open: ISS-005, ISS-006).
+Tracked in `context/issue-tracker.md`.
 
 ## Next steps
 
-1. Grill Phase 1 (includes ISS-006), then implement `01-basic-rag-pipeline.md`.
+1. ISS-009 → ISS-013: build Phase 1 in five slices, pushing after each.
 2. ISS-005: resolve the workflow-skills question (Phase 1 uses the available `grilling` / `tdd` / `code-review` skills meanwhile).
