@@ -33,8 +33,10 @@ Salaries are paid monthly by bank transfer on the last working day of each month
 Every employee must read and follow these policies, all available in PeopleHub:
 
 - Annual Leave Policy
+- Sickness Absence Policy
 - Expense Policy
 - IT Security Policy
+- Health and Safety Policy
 - Remote Work Policy (office roles only)
 
 ## 6. Code of conduct

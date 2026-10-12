@@ -30,7 +30,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added (Phase 1)
 
-- Sample corpus for Aldermoor Freight Ltd in `data/sample/`: 7 Markdown documents and a 3-page PDF contract, with fake contact data only (ISS-009).
+- Sample corpus for Aldermoor Freight Ltd in `data/sample/`: 10 Markdown documents and a 3-page PDF contract (~5.9k tokens, 23 chunks), with fake contact data only (ISS-009).
 - `scripts/build_sample_pdf.py` builds the PDF from `scripts/sample_sources/`, one source section per page; `fpdf2` added as a dev dependency (ISS-009).
 - Golden set `eval/datasets/golden.jsonl`: 10 questions, 7 answerable (2 need two documents), 3 unanswerable (ISS-009).
 

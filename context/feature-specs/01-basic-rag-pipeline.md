@@ -13,7 +13,7 @@ Answer a question from a small folder of local documents, with citations, from t
 | D3 | `page` is **1-based**. Non-paged formats (Markdown; later HTML, DOCX) are always page `1`. |
 | D4 | No-Answer is detected by **one fixed sentence**, `I don't know based on the documents I can access.`, held in one constant used by both the prompt and the code. A response containing it is a No-Answer. |
 | D5 | Any cited id not in the retrieved set → No-Answer. Zero citations → No-Answer (Invariant 7). No retry in Phase 1. |
-| D6 | Corpus: 8 synthetic documents for the fictional **Aldermoor Freight Ltd** (tenant A only). Fake PII uses only `example.com` addresses, `555-01xx` phone numbers, and invented `AF-` employee ids. |
+| D6 | Corpus: 11 synthetic documents for the fictional **Aldermoor Freight Ltd** (tenant A only), ~5.9k tokens, 23 chunks (expanded from 8 after review so top-5 stays selective). Fake PII uses only `example.com` addresses, `555-01xx` phone numbers, and invented `AF-` employee ids. |
 | D7 | Files are read with `pypdf` (PDF) and plain file reads (Markdown) into LangChain `Document` objects; no `langchain-community`. |
 | D8 | The chat model is one `provider:model` string in config (default `groq:openai/gpt-oss-120b`, temperature 0), built with `init_chat_model`. The swap is proven with `openai:gpt-4.1-mini`. |
 | D9 | Golden set: 10 entries — 7 answerable (2 need two documents), 3 unanswerable (2 near-misses). |
@@ -27,7 +27,7 @@ Answer a question from a small folder of local documents, with citations, from t
 
 ## Implementation
 
-1. **Sample corpus** (ISS-009) — 8 documents under `data/sample/` (7 Markdown, 1 multi-page PDF built by `scripts/build_sample_pdf.py` from a Markdown source outside `data/sample/`). Facts are consistent across documents. Write `eval/datasets/golden.jsonl` with fields `id`, `question`, `expected_answer`, `expected_sources` (list of `doc_id:page`), `answerable`.
+1. **Sample corpus** (ISS-009) — 11 documents under `data/sample/` (10 Markdown, 1 multi-page PDF built by `scripts/build_sample_pdf.py` from a Markdown source outside `data/sample/`). Facts are consistent across documents. Write `eval/datasets/golden.jsonl` with fields `id`, `question`, `expected_answer`, `expected_sources` (list of `doc_id:page`), `answerable`.
 2. **Load** (ISS-010) — read every file in `data/sample/`; one `Document` per PDF page or per Markdown file, with metadata `doc_id`, `source` (filename), `page`.
 3. **Chunk** (ISS-010) — `RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=400, chunk_overlap=50)`, per page so a chunk never spans pages. Chunk id `doc_id:page:index`.
 4. **Embed + store** (ISS-011) — embed chunks through the one embeddings factory (full model dimension) into `InMemoryVectorStore`.
@@ -53,7 +53,7 @@ app/
   answering/answer.py       answer(question) -> AnswerResult
   answering/citations.py    parse + validate [doc_id:page]
   prompts/answer_v1.md
-data/sample/                the 8 documents
+data/sample/                the 11 documents
 eval/datasets/golden.jsonl
 scripts/build_sample_pdf.py
 tests/

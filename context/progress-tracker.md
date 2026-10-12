@@ -5,12 +5,12 @@ Update after every meaningful change. Describe what is actually built, not what 
 ## Current phase
 
 **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
-Slice 1 (ISS-009) built, awaiting review: sample corpus + golden set. Phase 0 leftover: ISS-005 (workflow skills).
+Slice 1 (ISS-009) done. Working on slice 2 (ISS-010): loading + chunking. Phase 0 leftover: ISS-005 (workflow skills).
 
 ## Completed
 
-- **Phase 1 slice 1 — sample corpus + golden set** (2026-10-12, ISS-009, awaiting review)
-  - `data/sample/`: employee handbook, annual leave, expense, IT security, remote work policies, CleanFleet contract, org chart (Markdown) and SwiftParts contract (3-page PDF). ~4,400 tokens total (cl100k).
+- **Phase 1 slice 1 — sample corpus + golden set** (2026-10-12, ISS-009)
+  - `data/sample/`: employee handbook; annual leave, sickness absence, expense, IT security, health and safety, remote work policies; CleanFleet and TrackLine contracts; org chart (Markdown); SwiftParts contract (3-page PDF). ~5,900 tokens, 23 chunks at 400/50.
   - Fake data only: `aldermoor.example.com` / `*.example.com` emails, `555-01xx` phones, `AF-` employee ids.
   - `eval/datasets/golden.jsonl`: 10 entries; every expected fact checked against its cited page; near-miss topics confirmed absent.
 - **Phase 0 — Setup** (2026-10-12)
