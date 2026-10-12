@@ -1,0 +1,22 @@
+[project]
+name = "secure-rag-assistant"
+version = "0.1.0"
+description = "RAG over private documents with security guardrails, a tamper-evident audit trail, and an evaluation gate."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "langchain>=1.4.4",
+    "langchain-core>=1.6.9",
+    "langchain-groq>=1.1.3",
+    "langchain-openai>=1.7.0",
+    "langchain-text-splitters>=1.1.3",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.15.0",
+    "pypdf>=6.20.0",
+    "python-dotenv>=1.2.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+]
