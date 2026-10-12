@@ -5,10 +5,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 ## Current phase
 
 **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
-Slice 1 (ISS-009) done. Working on slice 2 (ISS-010): loading + chunking. Phase 0 leftover: ISS-005 (workflow skills).
+Slices 1–2 done (ISS-009, ISS-010). Working on slice 3 (ISS-011): embeddings + search. Phase 0 leftover: ISS-005 (workflow skills).
 
 ## Completed
 
+- **Phase 1 slice 2 — loading + chunking** (2026-10-12, ISS-010)
+  - `app/ingestion/loaders.py`: `load_pages(folder)`; MD = page 1, PDF = one page per PDF page (1-based, empty pages skipped); hidden files ignored; other types and duplicate doc ids raise.
+  - `app/ingestion/chunking.py`: `chunk_pages(...)`; per-page token chunks via `tiktoken` `cl100k_base`.
+  - `app/config.py` (`Settings`, `get_settings()`), `app/domain.py` (`Page`, `Chunk`).
+  - Tests: 10 passing (`uv run pytest`), ruff clean. Real corpus: 11 documents, 13 pages, 23 chunks.
 - **Phase 1 slice 1 — sample corpus + golden set** (2026-10-12, ISS-009)
   - `data/sample/`: employee handbook; annual leave, sickness absence, expense, IT security, health and safety, remote work policies; CleanFleet and TrackLine contracts; org chart (Markdown); SwiftParts contract (3-page PDF). ~5,900 tokens, 23 chunks at 400/50.
   - Fake data only: `aldermoor.example.com` / `*.example.com` emails, `555-01xx` phones, `AF-` employee ids.

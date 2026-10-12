@@ -7,7 +7,7 @@ numbers stay stable.
     uv run python scripts/build_sample_pdf.py
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fpdf import FPDF
@@ -22,7 +22,7 @@ def build(source: Path, target: Path) -> int:
     pdf = FPDF(format="A4")
     pdf.set_margins(left=20, top=20, right=20)
     pdf.set_auto_page_break(auto=False)
-    pdf.set_creation_date(datetime(2025, 2, 14, tzinfo=timezone.utc))  # reproducible output
+    pdf.set_creation_date(datetime(2025, 2, 14, tzinfo=UTC))  # reproducible output
     pdf.add_page()
 
     for line in source.read_text(encoding="utf-8").splitlines():

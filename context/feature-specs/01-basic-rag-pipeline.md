@@ -14,7 +14,7 @@ Answer a question from a small folder of local documents, with citations, from t
 | D4 | No-Answer is detected by **one fixed sentence**, `I don't know based on the documents I can access.`, held in one constant used by both the prompt and the code. A response containing it is a No-Answer. |
 | D5 | Any cited id not in the retrieved set → No-Answer. Zero citations → No-Answer (Invariant 7). No retry in Phase 1. |
 | D6 | Corpus: 11 synthetic documents for the fictional **Aldermoor Freight Ltd** (tenant A only), ~5.9k tokens, 23 chunks (expanded from 8 after review so top-5 stays selective). Fake PII uses only `example.com` addresses, `555-01xx` phone numbers, and invented `AF-` employee ids. |
-| D7 | Files are read with `pypdf` (PDF) and plain file reads (Markdown) into LangChain `Document` objects; no `langchain-community`. |
+| D7 | Files are read with `pypdf` (PDF) and plain file reads (Markdown) into typed `Page` records (Pydantic, per code standards — LangChain `Document` metadata is an untyped dict); no `langchain-community`. Hidden files are ignored; other file types and duplicate doc ids are errors. |
 | D8 | The chat model is one `provider:model` string in config (default `groq:openai/gpt-oss-120b`, temperature 0), built with `init_chat_model`. The swap is proven with `openai:gpt-4.1-mini`. |
 | D9 | Golden set: 10 entries — 7 answerable (2 need two documents), 3 unanswerable (2 near-misses). |
 | D10 | Unit tests use fake chat and embedding models through the `answer(question)` seam. One live smoke test is marked `live` and runs only with `pytest -m live`. |
@@ -28,8 +28,8 @@ Answer a question from a small folder of local documents, with citations, from t
 ## Implementation
 
 1. **Sample corpus** (ISS-009) — 11 documents under `data/sample/` (10 Markdown, 1 multi-page PDF built by `scripts/build_sample_pdf.py` from a Markdown source outside `data/sample/`). Facts are consistent across documents. Write `eval/datasets/golden.jsonl` with fields `id`, `question`, `expected_answer`, `expected_sources` (list of `doc_id:page`), `answerable`.
-2. **Load** (ISS-010) — read every file in `data/sample/`; one `Document` per PDF page or per Markdown file, with metadata `doc_id`, `source` (filename), `page`.
-3. **Chunk** (ISS-010) — `RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=400, chunk_overlap=50)`, per page so a chunk never spans pages. Chunk id `doc_id:page:index`.
+2. **Load** (ISS-010) — read every file in `data/sample/`; one `Page` per PDF page or per Markdown file, with `doc_id`, `source` (filename), `page`, `text`. PDF pages without text are skipped.
+3. **Chunk** (ISS-010) — `RecursiveCharacterTextSplitter.from_tiktoken_encoder(encoding_name="cl100k_base", chunk_size=400, chunk_overlap=50)`, per page so a chunk never spans pages. Chunk id `doc_id:page:index`, index counted per page.
 4. **Embed + store** (ISS-011) — embed chunks through the one embeddings factory (full model dimension) into `InMemoryVectorStore`.
 5. **Retrieve** (ISS-011) — top-5 by cosine similarity, with scores.
 6. **Generate** (ISS-012) — prompt from `app/prompts/answer_v1.md`; chunks wrapped in `<document id="doc_id:page">…</document>` tags.
@@ -44,7 +44,8 @@ Answer a question from a small folder of local documents, with citations, from t
 
 ```
 app/
-  config.py                 settings: models, chunk size/overlap, top-k
+  config.py                 settings: models, chunk size/overlap, tokenizer, top-k
+  domain.py                 glossary types shared across modules (Page, Chunk, …)
   cli.py                    python -m app.cli "question"
   ingestion/loaders.py      MD + PDF → Documents with doc_id, source, page
   ingestion/chunking.py     split into Chunks with ids
