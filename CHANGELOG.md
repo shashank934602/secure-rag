@@ -28,6 +28,12 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - Phase 1 spec rewritten with grilled decisions D1–D16; chunks are 400 tokens / 50 overlap per page, measured with `tiktoken` (ISS-006).
 - Glossary: added **Doc id** (filename slug used in citations).
 
+### Added (Phase 1)
+
+- Sample corpus for Aldermoor Freight Ltd in `data/sample/`: 7 Markdown documents and a 3-page PDF contract, with fake contact data only (ISS-009).
+- `scripts/build_sample_pdf.py` builds the PDF from `scripts/sample_sources/`, one source section per page; `fpdf2` added as a dev dependency (ISS-009).
+- Golden set `eval/datasets/golden.jsonl`: 10 questions, 7 answerable (2 need two documents), 3 unanswerable (ISS-009).
+
 ## Design — 2026-10-10
 
 ### Added

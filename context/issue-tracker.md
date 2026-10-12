@@ -17,7 +17,7 @@ Every bug, task, open question, and piece of tech debt gets an id here. Progress
 | Id | Title | Type | Phase | Pri | Status | Opened | Notes |
 |----|-------|------|-------|-----|--------|--------|-------|
 | ISS-005 | Workflow skills missing: `/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/pr`, `/retro`, `/teach`, `/handoff` | question | 0 | P2 | open | 2026-10-12 | Plugin is installed but only `grilling`, `tdd`, `code-review`, `codebase-design`, `domain-modeling`, `research`, `prototype`, `diagnosing-bugs` are available. Update the plugin, or adapt `ai-workflow-rules.md`. |
-| ISS-009 | Phase 1 slice 1: sample corpus (8 docs) + golden set (10 questions) | task | 1 | P1 | in-progress | 2026-10-12 | Spec 01 D6, D9. User reviews the documents before slice 2. |
+| ISS-009 | Phase 1 slice 1: sample corpus (8 docs) + golden set (10 questions) | task | 1 | P1 | in-progress | 2026-10-12 | Built: 7 MD + 1 three-page PDF, ~4.4k tokens (below the 6-10k estimate); golden set verified against the text. Waiting on user review. |
 | ISS-010 | Phase 1 slice 2: load MD + PDF, chunk per page (400/50 tokens) | task | 1 | P1 | blocked | 2026-10-12 | Blocked on ISS-009. Spec 01 D1–D3, D7, D13. |
 | ISS-011 | Phase 1 slice 3: embeddings factory + in-memory top-5 search | task | 1 | P1 | blocked | 2026-10-12 | Blocked on ISS-010. Spec 01 D12. |
 | ISS-012 | Phase 1 slice 4: answer + citation validation (TDD, fake LLM) | task | 1 | P1 | blocked | 2026-10-12 | Blocked on ISS-011. Spec 01 D4, D5, D8, D14. |

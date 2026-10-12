@@ -5,10 +5,14 @@ Update after every meaningful change. Describe what is actually built, not what 
 ## Current phase
 
 **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
-Working on slice 1 (ISS-009): sample corpus + golden set. Phase 0 leftover: ISS-005 (workflow skills).
+Slice 1 (ISS-009) built, awaiting review: sample corpus + golden set. Phase 0 leftover: ISS-005 (workflow skills).
 
 ## Completed
 
+- **Phase 1 slice 1 — sample corpus + golden set** (2026-10-12, ISS-009, awaiting review)
+  - `data/sample/`: employee handbook, annual leave, expense, IT security, remote work policies, CleanFleet contract, org chart (Markdown) and SwiftParts contract (3-page PDF). ~4,400 tokens total (cl100k).
+  - Fake data only: `aldermoor.example.com` / `*.example.com` emails, `555-01xx` phones, `AF-` employee ids.
+  - `eval/datasets/golden.jsonl`: 10 entries; every expected fact checked against its cited page; near-miss topics confirmed absent.
 - **Phase 0 — Setup** (2026-10-12)
   - Own Git repo (`main` branch) in this folder, pushed to `https://github.com/shashank934602/secure-rag`.
   - `uv` project, Python pinned to 3.12 (`.python-version`, `requires-python = ">=3.12,<3.13"`).
