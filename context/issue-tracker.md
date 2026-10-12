@@ -17,7 +17,7 @@ Every bug, task, open question, and piece of tech debt gets an id here. Progress
 | Id | Title | Type | Phase | Pri | Status | Opened | Notes |
 |----|-------|------|-------|-----|--------|--------|-------|
 | ISS-005 | Workflow skills missing: `/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/pr`, `/retro`, `/teach`, `/handoff` | question | 0 | P2 | open | 2026-10-12 | Plugin is installed but only `grilling`, `tdd`, `code-review`, `codebase-design`, `domain-modeling`, `research`, `prototype`, `diagnosing-bugs` are available. Update the plugin, or adapt `ai-workflow-rules.md`. |
-| ISS-014 | OpenAI account has no credits: embeddings (and the OpenAI chat-swap check) fail with `insufficient_quota` | bug | 1 | P1 | open | 2026-10-12 | Code is provider-agnostic; fix is billing or config. Options: add OpenAI credits; or switch `EMBEDDING_MODEL` to Google (free tier, key present) or local `bge-small-en-v1.5` (free, 384-d, needs torch). Groq chat works. Blocks the real-corpus retrieval check and the D8 swap proof. |
+| ISS-014 | OpenAI account has no credits: embeddings (and the OpenAI chat-swap check) fail with `insufficient_quota` | bug | 1 | P1 | blocked | 2026-10-12 | **Decision (2026-10-12): option (a), add OpenAI credits; waiting on the user to top up.** No code change needed. When done: run the CLI on the golden questions, `uv run pytest -m live`, and the `CHAT_MODEL=openai:gpt-4.1-mini` swap; if spec 01 checks pass, release `v0.1.0`. Fallbacks if plans change: Google embeddings or local `bge-small-en-v1.5`. |
 
 ## Closed
 

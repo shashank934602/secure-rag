@@ -58,5 +58,5 @@ Tracked in `context/issue-tracker.md`.
 
 ## Next steps
 
-1. ISS-014: restore embeddings (OpenAI credits or another provider), then run the CLI on the golden questions and `uv run pytest -m live`; if all spec checks pass, release `v0.1.0`.
+1. ISS-014 (waiting on user to add OpenAI credits — decision (a)): then run the CLI on the golden questions and `uv run pytest -m live`; if all spec checks pass, release `v0.1.0`.
 2. ISS-005: resolve the workflow-skills question (Phase 1 uses the available `grilling` / `tdd` / `code-review` skills meanwhile).
