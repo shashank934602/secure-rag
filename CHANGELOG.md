@@ -42,6 +42,9 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - CLI `python -m app.cli "question" [--debug]`: answer plus sources; `--debug` adds status, prompt version, and retrieved chunks with scores (ISS-013).
 - Live smoke tests against real models, run only with `uv run pytest -m live` (ISS-013).
 
+- `docs/project-guide.md`: plain-language guide to the project — the problem, every concept, all phases, what is built, how we work, the agreed plan.
+- `docs/code-structure.md`: code structure with 13 diagrams — layers, imports, data shapes, start-up and question workflows, decision rules, tests, development loop.
+
 ### Fixed (Phase 1)
 
 - API keys in `.env` are now exported to the process environment, where model clients read them (ISS-011).
