@@ -45,6 +45,9 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - `docs/project-guide.md`: plain-language guide to the project — the problem, every concept, all phases, what is built, how we work, the agreed plan.
 - `docs/code-structure.md`: code structure with 13 diagrams — layers, imports, data shapes, start-up and question workflows, decision rules, tests, development loop.
 
+- `lessons/01-how-applied-ai-works.md` and `lessons/01_experiments.py`: lesson 1 with five runnable experiments (tokens, no documents, RAG by hand, temperature, prompt injection).
+- Agreed approach recorded: learning-first goal, budget, cut order, timeline (`plan.md` §0); teaching-first workflow (`AGENTS.md`, `context/ai-workflow-rules.md`).
+
 ### Fixed (Phase 1)
 
 - API keys in `.env` are now exported to the process environment, where model clients read them (ISS-011).

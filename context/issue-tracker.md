@@ -18,6 +18,7 @@ Every bug, task, open question, and piece of tech debt gets an id here. Progress
 |----|-------|------|-------|-----|--------|--------|-------|
 | ISS-005 | Workflow skills missing: `/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/pr`, `/retro`, `/teach`, `/handoff` | question | 0 | P2 | open | 2026-10-12 | Plugin is installed but only `grilling`, `tdd`, `code-review`, `codebase-design`, `domain-modeling`, `research`, `prototype`, `diagnosing-bugs` are available. Update the plugin, or adapt `ai-workflow-rules.md`. |
 | ISS-014 | OpenAI account has no credits: embeddings (and the OpenAI chat-swap check) fail with `insufficient_quota` | bug | 1 | P1 | blocked | 2026-10-12 | **Decision (2026-10-12): option (a), add OpenAI credits; waiting on the user to top up.** No code change needed. When done: run the CLI on the golden questions, `uv run pytest -m live`, and the `CHAT_MODEL=openai:gpt-4.1-mini` swap; if spec 01 checks pass, release `v0.1.0`. Fallbacks if plans change: Google embeddings or local `bge-small-en-v1.5`. |
+| ISS-015 | Citation parser misses `【doc_id:page】` (full-width brackets) used by `gpt-oss-120b` | bug | 1 | P1 | open | 2026-10-13 | Found in lesson 1, experiment 3: a correct, cited answer would become a No-Answer. Fake-model tests always use `[…]`, so they missed it. Assigned as warm-up exercise 1 (learner writes the fix against new tests). |
 
 ## Closed
 

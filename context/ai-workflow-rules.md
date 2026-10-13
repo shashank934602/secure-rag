@@ -1,18 +1,26 @@
 # Development Workflow
 
-Spec-driven and incremental. The context files say what to build and where we are; the skills below say how to get from idea to merged code. Don't invent behaviour that isn't in a spec.
+Spec-driven, incremental, and **teaching-first**. The context files say what to build and where we are; the skills below say how to get from idea to merged code. Don't invent behaviour that isn't in a spec.
+
+## Teaching-first (this is a learning project — `plan.md` §0)
+
+- **Nothing is built blindly.** Before any step: say what we're about to do, why, and which idea it teaches. After it: show what changed and check understanding.
+- **Every phase:** (1) **Lesson** — the phase's ideas in plain language, with a runnable experiment where possible, saved in `lessons/NN-….md`, ending with 2–3 questions; (2) **Build** — tests are provided first; the learner writes the **core** code (retrieval, guards, audit chain, eval metrics) until they pass; the agent writes plumbing (Docker, config, DB setup, wiring) and explains it; (3) **Walkthrough + quiz + one experiment** (change one thing, measure the effect).
+- **Done** = the phase's checks pass **and** the learner can explain every part they wrote.
+- Prefer small steps the learner can follow over large changes; when the agent must write a lot, walk through it afterwards.
 
 ## The loop for each build phase
 
 | Step | Skill | Output |
 |------|-------|--------|
-| 1. Align | `/grill-with-docs` | Resolved questions; new terms in `GLOSSARY.md`; ADRs for hard-to-reverse decisions |
+| 0. Learn | lesson in `lessons/` | The phase's ideas explained, with an experiment and questions |
+| 1. Align | `grilling` | Resolved questions; new terms in `GLOSSARY.md`; ADRs for hard-to-reverse decisions |
 | 2. Spec | `/to-spec` | `context/feature-specs/NN-slug.md` in the format below |
 | 3. Slice | `/to-tickets` | Vertical-slice tickets with blocking edges, each logged as an `ISS-NNN` task in `issue-tracker.md` |
-| 4. Build | `/implement` (drives `/tdd` at the agreed seams) | Code + tests, one slice at a time |
+| 4. Build | `tdd` at the agreed seams | Tests provided first; learner writes core code, agent writes plumbing; one slice at a time |
 | 5. Review | `/code-review` | Standards review + spec-conformance review |
 | 6. Ship | `/pr` | PR body with evidence (eval numbers for anything touching retrieval, guards, or prompts); `CHANGELOG.md` entry; issues closed |
-| 7. Reflect | `/retro` | Improvements to these context files and tooling |
+| 7. Reflect | walkthrough + quiz + experiment | Learner can explain every part; improvements to these context files |
 
 Use as needed:
 

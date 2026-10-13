@@ -5,6 +5,26 @@ Design details live in [docs/architecture.md](docs/architecture.md); this file i
 
 ---
 
+## 0. Agreed approach (2026-10-13)
+
+Decided with the owner before Phase 2; overrides older wording elsewhere in this file.
+
+| Decision | Choice |
+|----------|--------|
+| Goal | **Learning** applied AI engineering properly; a job is a bonus. Depth beats polish. |
+| Time | 10–12 hours per week |
+| Budget | Under ~$20 in total; free tiers (Groq) and local models where possible |
+| Who writes code | The learner writes the **core** parts (retrieval, guards, audit chain, eval metrics); plumbing and tests are provided |
+| Teaching | Nothing is built blindly: every phase starts with a lesson, core parts are built against tests the learner makes pass, and ends with a walkthrough, quiz, and one experiment |
+| Warm-up | Short exercises on this project's real code before Phase 2; skipped if the first is easy |
+| Phase 8 | Light: README with measured results + one-command Docker start; video and blog optional |
+| If time runs short, cut in order | Phase 8 extras → Langfuse tracing → CI automation → adversarial set 300→100 |
+| Never cut | Access control, guards, measuring |
+| Estimate | ~13–15 weeks → around late January 2027 |
+| Definition of done (per phase) | The phase's checks pass **and** the learner can explain every part they wrote |
+
+Lessons live in `lessons/`; plain-language guides in `docs/project-guide.md` and `docs/code-structure.md`.
+
 ## 1. What we're building
 
 An assistant that answers questions from a company's private documents (handbooks, policies,
@@ -273,13 +293,13 @@ gantt
 
 | Risk | Mitigation |
 |------|------------|
-| Scope creep (it's a big design) | Phases are independently useful. If time runs out after Phase 5, you still have a strong project; Phases 6–8 add polish. |
+| Scope creep (it's a big design) | Phases are independently useful. Cut order is fixed in §0: Phase 8 extras → Langfuse → CI automation → adversarial set 300→100. Never cut access control, guards, or measuring. |
 | Python 3.14 incompatibilities | Use Python 3.12 for this project from day one. |
 | API costs from eval runs | Groq free tier, local models, cache embeddings, full eval only on PRs. |
 | LLM-judge scores are noisy | Pin judge versions, report confidence intervals, compare against a saved baseline. |
 | Injection classifier false positives on normal docs | Measure false refusals on the benign set; tune thresholds; rely on structural controls. |
 | Getting stuck on a concept | `/teach` before the phase; `diagnosing-bugs` when something breaks; `/handoff` between sessions. |
-| AI-written code you don't understand | Grill before building, review after; be able to explain every module in an interview. |
+| AI-written code you don't understand | The learner writes the core parts; lesson before, walkthrough and quiz after; a phase isn't done until every part can be explained (§0). |
 
 ## 9. Decisions to make in Phase 0 (with recommendations)
 
@@ -317,4 +337,4 @@ time, why a different judge model, what the system *can't* protect against (§14
 
 ---
 
-**Next action:** Phase 0 → create the separate repo, then `/grill-with-docs` on Phase 1.
+**Next action:** Lesson 1 (how applied AI works) → warm-up exercises → finish Phase 1 when OpenAI credits are added (ISS-014) → Phase 2.
