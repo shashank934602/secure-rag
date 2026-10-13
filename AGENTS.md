@@ -15,7 +15,8 @@ This file is the entry point for any coding agent working in this repo.
 8. `context/progress-tracker.md` — current phase and what is actually built
 9. `context/issue-tracker.md` — open bugs, tasks, and questions
 10. `CHANGELOG.md` — what has changed so far
-11. `docs/project-guide.md`, `docs/code-structure.md`, `lessons/` — plain-language guides and lessons
+11. `docs/project-guide.md`, `docs/code-structure.md`, `lessons/` — plain-language guides and lessons; `lessons/learning-log.md` — **read the latest entry first**
+12. `docs/production-plan.md` — the path to production (after Phase 7)
 
 ## This is a learning project
 
@@ -25,6 +26,7 @@ The owner is learning applied AI engineering (`plan.md` §0). Teach, don't just 
 - The learner writes the core parts (retrieval, guards, audit chain, eval metrics) against tests you provide; you write plumbing and explain it.
 - Each phase has a lesson in `lessons/`, and ends with a walkthrough, a quiz, and one experiment.
 - Use plain language; define a term the first time it appears.
+- **Learning log (mandatory):** read the latest entry of `lessons/learning-log.md` before starting. Every working session gets a dated entry — *Where we are / What we learned / How we learned it / What I can now explain / Still unclear / Next session starts with* — updated after each step, newest at the bottom, committed and pushed with the work. `scripts/learning_reminder.py` prints the rule and latest entry; run it if context was lost.
 
 ## Tracking: three files, three jobs
 

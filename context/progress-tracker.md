@@ -13,6 +13,8 @@ All 5 slices built (ISS-009 … ISS-013); 33 offline tests pass. **Phase 1 is no
   - Agreed approach in `plan.md` §0: learning-first, 10–12 h/week, < $20, learner writes core parts, lesson → build against tests → walkthrough + quiz + experiment; ~13–15 weeks.
   - Teaching-first rules in `AGENTS.md` and `context/ai-workflow-rules.md`.
   - Guides: `docs/project-guide.md`, `docs/code-structure.md` (13 diagrams). Lesson 1: `lessons/01-how-applied-ai-works.md` + `lessons/01_experiments.py` (run against Groq).
+  - Learning log `lessons/learning-log.md` + session-start reminder (`scripts/learning_reminder.py`; hook in local `.claude/settings.json`).
+  - `docs/production-plan.md` written; production decisions tracked as ISS-016.
   - Lesson 1 experiment 3 found ISS-015: `gpt-oss-120b` cites with `【…】`, which the parser rejects.
 - **Phase 1 slice 5 — CLI + live test** (2026-10-12, ISS-013)
   - `app/cli.py`: `main(argv, build=...)`; answer + `Sources:`; `--debug` shows status, prompt version, retrieved chunks with scores; errors → one-line message, exit 1 (`--debug` shows the traceback).

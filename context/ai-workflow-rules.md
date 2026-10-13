@@ -8,6 +8,7 @@ Spec-driven, incremental, and **teaching-first**. The context files say what to 
 - **Every phase:** (1) **Lesson** — the phase's ideas in plain language, with a runnable experiment where possible, saved in `lessons/NN-….md`, ending with 2–3 questions; (2) **Build** — tests are provided first; the learner writes the **core** code (retrieval, guards, audit chain, eval metrics) until they pass; the agent writes plumbing (Docker, config, DB setup, wiring) and explains it; (3) **Walkthrough + quiz + one experiment** (change one thing, measure the effect).
 - **Done** = the phase's checks pass **and** the learner can explain every part they wrote.
 - Prefer small steps the learner can follow over large changes; when the agent must write a lot, walk through it afterwards.
+- **Learning log:** every session updates `lessons/learning-log.md` (template inside) — where we are, what was learned, how, what the learner can explain, what's unclear, where to start next.
 
 ## The loop for each build phase
 
