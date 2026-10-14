@@ -97,3 +97,21 @@ from its content) are unanswered.
 - Production decisions D-P1 … D-P8 (users, hosting, **hosting budget** beyond the < $20 AI budget) — not needed until after Phase 7 (ISS-016).
 
 **Next session starts with:** answer the Lesson 1 questions → warm-up exercise 1: fix ISS-015 (citation brackets) yourself against tests.
+
+---
+
+## 2026-10-14 — Picking up: where are we?
+
+**Where we are:** Phase 1 built (33 offline tests pass), not yet closed — waiting on OpenAI credits (ISS-014).
+Learning track: Lesson 1 done; its questions and walkthrough stop ① still unanswered. Open: ISS-005, ISS-014, ISS-015, ISS-016.
+
+**What we learned:** nothing new yet — session started with a status check. The session-start reminder
+loaded this log automatically, so the rule survived the new session.
+
+**How we learned it:** —
+
+**What I can now explain:** pending (Lesson 1 questions).
+
+**Still unclear / open questions:** same as 2026-10-13.
+
+**Next session starts with:** answer the 3 Lesson 1 questions → warm-up exercise 1: fix ISS-015 yourself against tests.
