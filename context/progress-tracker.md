@@ -5,10 +5,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 ## Current phase
 
 **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
-All 5 slices built (ISS-009 … ISS-013); 33 offline tests pass. **Phase 1 is not done:** the real-model checks (cited answer, No-Answer, OpenAI swap, `pytest -m live`) are blocked by ISS-014 — the OpenAI account has no credits, so embeddings fail. Phase 0 leftover: ISS-005 (workflow skills).
+All 5 slices built; 35 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed). **Phase 1 closes when** ISS-015 is fixed (learner's warm-up exercise) and the live tests + Mistral chat swap pass. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Mistral switch + first real run** (2026-10-15)
+  - `EMBEDDING_MODEL` default `mistralai:mistral-embed` (1024-d), `langchain-mistralai` added; ADR-0005; 35 offline tests pass.
+  - First real run (Mistral embeddings + Groq `gpt-oss-120b`): expected page in top-5 for 10/11 sources; answered 2/7 answerable; 3/3 trick questions → No-Answer. Failures: 4 × citation format (ISS-015), 1 × retrieval miss (ISS-017). Groq latency up to ~14 s on the free tier.
+  - Mistral chat swap reached the API but hit the free-tier rate limit; to re-run after ISS-015.
+  - Phase 2 decisions D0–D11 agreed (spec 02).
 - **Learning setup** (2026-10-13)
   - Agreed approach in `plan.md` §0: learning-first, 10–12 h/week, < $20, learner writes core parts, lesson → build against tests → walkthrough + quiz + experiment; ~13–15 weeks.
   - Teaching-first rules in `AGENTS.md` and `context/ai-workflow-rules.md`.

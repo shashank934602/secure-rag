@@ -51,6 +51,12 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - `lessons/learning-log.md`: daily learning journal (where / what / how / can explain / unclear / next) with entries for 2026-10-12 and 2026-10-13; `scripts/learning_reminder.py` prints the rule and latest entry for session start.
 - `docs/production-plan.md`: production plan — decisions, readiness gates, stages A–F, don'ts, backup and disaster recovery, fallback plans, post-production operations (ISS-016).
 
+### Changed (Phase 1–2)
+
+- Embeddings switched from OpenAI to **Mistral `mistral-embed`** (1024-d) — one config line plus `langchain-mistralai`; ADR-0005; closes ISS-014. Model-swap tests now cover Mistral embeddings and chat.
+- First real run on the golden set: search found the expected page for 10 of 11 sources; 2 of 7 answerable questions accepted (4 lost to ISS-015, 1 retrieval miss ISS-017); 3 of 3 trick questions correctly answered "I don't know".
+- Phase 2 decisions recorded in `context/feature-specs/02-postgres-api-baseline.md`.
+
 ### Fixed (Phase 1)
 
 - API keys in `.env` are now exported to the process environment, where model clients read them (ISS-011).

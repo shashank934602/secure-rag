@@ -1,4 +1,5 @@
 import pytest
+from langchain_mistralai import MistralAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
 from app.domain import Chunk
@@ -68,6 +69,17 @@ def test_factory_builds_the_configured_model_at_full_dimension(
     assert isinstance(embeddings, OpenAIEmbeddings)
     assert embeddings.model == "text-embedding-3-small"
     assert embeddings.dimensions is None  # never truncated
+
+
+def test_factory_builds_mistral_embeddings_from_config_string(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MISTRAL_API_KEY", "test-key")
+
+    embeddings = make_embeddings("mistralai:mistral-embed")
+
+    assert isinstance(embeddings, MistralAIEmbeddings)
+    assert embeddings.model == "mistral-embed"
 
 
 def test_factory_rejects_a_model_without_provider() -> None:

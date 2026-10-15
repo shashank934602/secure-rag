@@ -1,6 +1,7 @@
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
+from langchain_mistralai import ChatMistralAI
 from langchain_openai import ChatOpenAI
 
 from app.answering.answer import NO_ANSWER, Answerer, build_answerer
@@ -139,13 +140,18 @@ def test_prompt_wraps_chunks_in_document_tags_and_states_the_rules() -> None:
 
 @pytest.mark.parametrize(
     ("chat_model", "expected_class"),
-    [("groq:openai/gpt-oss-120b", ChatGroq), ("openai:gpt-4.1-mini", ChatOpenAI)],
+    [
+        ("groq:openai/gpt-oss-120b", ChatGroq),
+        ("openai:gpt-4.1-mini", ChatOpenAI),
+        ("mistralai:mistral-small-latest", ChatMistralAI),
+    ],
 )
 def test_chat_model_provider_is_swapped_by_config_only(
     tmp_path, monkeypatch: pytest.MonkeyPatch, chat_model: str, expected_class: type
 ) -> None:
     monkeypatch.setenv("GROQ_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("MISTRAL_API_KEY", "test-key")
     (tmp_path / "leave-policy.md").write_text("25 days of leave.")
     settings = Settings(chat_model=chat_model, corpus_dir=tmp_path)
 

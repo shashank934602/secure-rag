@@ -15,13 +15,15 @@ class Settings(BaseSettings):
     # Models: "provider:model" strings, passed to init_chat_model / the embeddings factory.
     chat_model: str = "groq:openai/gpt-oss-120b"
     chat_temperature: float = 0.0
-    embedding_model: str = "openai:text-embedding-3-small"
+    embedding_model: str = "mistralai:mistral-embed"  # 1024 numbers per text (ADR-0005)
 
     # Corpus and chunking (spec 01 D1, D13).
     corpus_dir: Path = ROOT / "data" / "sample"
     chunk_size: int = 400
     chunk_overlap: int = 50
-    tokenizer_encoding: str = "cl100k_base"  # the tokenizer of text-embedding-3-small
+    # Chunk sizes are measured with this tokenizer. Mistral counts tokens slightly differently,
+    # but 400 is far below mistral-embed's 8,192-token input limit, so the estimate is safe.
+    tokenizer_encoding: str = "cl100k_base"
 
     # Retrieval.
     top_k: int = 5

@@ -110,7 +110,7 @@ Ingestion (§3) and evaluation (§9) are separate processes that share the same 
 | Orchestrator | Stateful flow with branches, retries, timeouts | LangGraph |
 | Chat LLM | Answer generation | `init_chat_model("groq:openai/gpt-oss-120b")` (swappable) |
 | Grounding judge | "Is every sentence supported?" | Small fast model from a **different family** than the generator |
-| Embeddings | Text → vectors (dimension pinned in schema) | `text-embedding-3-small` (1536-d) or `BAAI/bge-small-en-v1.5` (384-d) |
+| Embeddings | Text → vectors (dimension pinned in schema) | `mistral-embed` (1024-d, [ADR-0005](adr/0005-mistral-embeddings.md)); offline fallback `BAAI/bge-small-en-v1.5` (384-d) |
 | Hybrid search | Dense + keyword retrieval, fused with Reciprocal Rank Fusion | pgvector (HNSW) + Postgres `tsvector` |
 | Reranker | Precise top-k ordering + relevance score | `BAAI/bge-reranker-base` |
 | Injection classifier | Signal for direct/indirect injection | `protectai/deberta-v3-base-prompt-injection-v2` (512-token windows) |
@@ -422,7 +422,7 @@ erDiagram
 ```
 
 Notes:
-- `embedding` is a fixed-dimension column (`vector(1536)` or `vector(384)`); changing the embedding model means re-embedding, which is why `embedding_model` is stored per chunk.
+- `embedding` is a fixed-dimension column (`vector(1024)` for `mistral-embed`, ADR-0005); changing the embedding model means re-embedding, which is why `embedding_model` is stored per chunk.
 - Indexes: HNSW on `embedding`, GIN on `content_tsv`, B-tree on `(tenant_id, is_active)`. With filtered HNSW search, enable pgvector 0.8 **iterative scan** so a selective role filter still returns k rows.
 - RLS policy on `chunks`, `documents`, `requests`, `audit_events`: `tenant_id = current_setting('app.tenant_id')::uuid`.
 - **Audit integrity**: `audit_events` is append-only — a trigger raises on UPDATE/DELETE, and each row stores `row_hash = sha256(prev_hash ‖ row contents)`. `GET /v1/audit/verify` recomputes the chain and reports the first broken link.

@@ -305,7 +305,7 @@ gantt
 
 | Question | Recommendation | Why |
 |----------|----------------|-----|
-| Embedding model | **OpenAI `text-embedding-3-small` (1536-d)** | You already have the key; costs cents; strong quality. Keep `bge-small` as the offline alternative. |
+| Embedding model | ~~OpenAI `text-embedding-3-small` (1536-d)~~ → **Mistral `mistral-embed` (1024-d)** since 2026-10-15 | OpenAI had no credits; Mistral works on the free tier (ADR-0005). Keep `bge-small` as the offline alternative. |
 | Reranker hardware | **CPU / Apple MPS on your M4** | Fast enough for 20 pairs; no GPU needed. |
 | Sample corpus | **Synthetic, LLM-generated, hand-edited** | You control the facts, so the golden set has correct answers. |
 | Separate repo | **Yes** | Cleaner portfolio link; the skills set up per repo. |
