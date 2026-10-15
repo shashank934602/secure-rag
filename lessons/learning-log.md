@@ -136,3 +136,11 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** Lesson 1 questions 1–3; stop ① question; Phase 2 decision round (10 questions, asked 2026-10-13, unanswered).
 
 **Next session starts with:** answer the 3 Lesson 1 questions.
+
+**Update (later on 2026-10-15) — Phase 2 kickoff:**
+- Found a free alternative to OpenAI: the Mistral key works for embeddings (`mistral-embed`, 1,024 numbers per text). Lesson: the embeddings factory from Phase 1 makes switching provider a config change.
+- Mistake to learn from: reading `.env` with the shell printed two API keys into the session log (the file has a space after `=`). Recommended rotating the OpenAI and Groq keys.
+- Owner chose to start Phase 2 now; the Lesson 1 questions are deferred, not dropped.
+- Phase 2 plan laid out: decisions (12) → lesson 2 → spec → 8 build steps (owner writes Postgres search + eval metrics) → baseline score. Docker Desktop is installed but not running.
+
+**Next session starts with:** answer the Phase 2 decision round (or "all recommended").
