@@ -144,3 +144,14 @@ loaded this log automatically, so the rule survived the new session.
 - Phase 2 plan laid out: decisions (12) → lesson 2 → spec → 8 build steps (owner writes Postgres search + eval metrics) → baseline score. Docker Desktop is installed but not running.
 
 **Next session starts with:** answer the Phase 2 decision round (or "all recommended").
+
+**Update — first real run (2026-10-15):**
+- **Switched embeddings to Mistral** with one config line (ADR-0005). An embedding = a list of 1,024 numbers per text; similar meaning → similar numbers.
+- **First real run** on the 10 test questions: search found the right page 10/11 times; 3/3 trick questions → "I don't know" ✅; but only 2/7 real questions were answered.
+- **Learned to diagnose before fixing:** looking at the model's *raw* replies showed two different failure types:
+  - *output-format failure* (4 answers): the model was right, but cited `【doc:page】` or `doc:page:chunk`, and our checker threw the answer away (ISS-015);
+  - *retrieval failure* (1 answer, g06): the org chart never reached the model, so "I don't know" was correct (ISS-017 → Phase 3).
+- **Free tiers have rate limits:** Mistral returned "Rate limit exceeded"; Groq answers slowed to ~14 s.
+- Warm-up exercise 1 set up: `tests/test_citations.py` (6 failing, 4 passing) — the learner fixes `app/answering/citations.py`.
+
+**Next session starts with:** warm-up exercise 1 — make `uv run pytest tests/test_citations.py` all green.
