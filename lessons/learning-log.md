@@ -115,3 +115,24 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** same as 2026-10-13.
 
 **Next session starts with:** answer the 3 Lesson 1 questions → warm-up exercise 1: fix ISS-015 yourself against tests.
+
+---
+
+## 2026-10-15 — Planning the next steps
+
+**Where we are:** unchanged — Phase 1 built, not closed. Checked OpenAI today: still `insufficient_quota` (ISS-014).
+
+**What we learned:** the order of work from here (below); nothing new technically yet.
+
+**How we learned it:** reviewed the plan together.
+
+**The plan agreed to discuss:**
+1. Now (no credits needed): Lesson 1 questions → warm-up 1 (fix ISS-015 yourself against tests) → walkthrough stops ②–⑤ + quiz.
+2. When credits are added: close Phase 1 (real golden-question run, live tests, provider swap, release `v0.1.0`).
+3. Phase 2: lesson 2 → answer the Phase 2 decision round → build (you write Postgres search + eval metrics) → baseline score.
+
+**What I can now explain:** pending (Lesson 1 questions).
+
+**Still unclear / open questions:** Lesson 1 questions 1–3; stop ① question; Phase 2 decision round (10 questions, asked 2026-10-13, unanswered).
+
+**Next session starts with:** answer the 3 Lesson 1 questions.
