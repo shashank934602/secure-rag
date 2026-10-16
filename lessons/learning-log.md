@@ -174,3 +174,13 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** writing the patterns independently (Steps A and B).
 
 **Next session starts with:** finish Step A (`_BRACKET`) and Step B (`_REFERENCE`) until `uv run pytest tests/test_citations.py` is all green.
+
+**Update (later on 2026-10-16): solution explained, ready to type**
+- The learner asked for the solution to be explained. A demo compared the old and new patterns on sample text without touching the code:
+  - Step A, `_BRACKET`: `[\[【]([^\[\]【】]+)[\]】]` means "`[` or `【`, then anything that isn't a bracket, then `]` or `】`". A set `[ ]` means "any one of these", so the new bracket is added beside the old one.
+  - Step B, `_REFERENCE`: `(?::\d+)?` is added after the page number. It means "an optional `:number` that we don't keep". `doc:page:chunk` is accepted, but only the doc and page are kept.
+  - Demo result: `【expense:2】` and `expense-policy:1:1` are now found, and `see section 4` is still rejected.
+- Lesson: **be tolerant of harmless format differences in model output, but strict about what matters** (the document and page must still be ones we retrieved).
+- `tests/test_citations.py` is committed while still red (6 failing). That is on purpose: it's the exercise.
+
+**Next session starts with:** type the two patterns into `app/answering/citations.py` (lines 7–8). Then run `uv run pytest tests/test_citations.py -v` (expect 10 passed) and `uv run pytest`, and close ISS-015.
