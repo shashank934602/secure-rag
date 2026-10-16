@@ -155,3 +155,22 @@ loaded this log automatically, so the rule survived the new session.
 - Warm-up exercise 1 set up: `tests/test_citations.py` (6 failing, 4 passing) — the learner fixes `app/answering/citations.py`.
 
 **Next session starts with:** warm-up exercise 1 — make `uv run pytest tests/test_citations.py` all green.
+
+---
+
+## 2026-10-16 — Warm-up exercise 1: learning regex to fix the citation checker
+
+**Where we are:** Phase 2 step 1 — Phase 1 closes once ISS-015 is fixed. Exercise in progress: `tests/test_citations.py` 6 failing / 4 passing.
+
+**What we learned:**
+- (2026-10-15, after the exercise felt too hard) **Regular expressions** from zero: plain characters, `\d` and `+`, character sets `[...]`, escaping with `\`, capture groups `( )`, optional `?`, non-capturing groups `(?: )`.
+- How to read our two patterns: `_BRACKET` finds text inside brackets; `_REFERENCE` checks it looks like `doc-id:page`.
+- Python check: the learner can read loops, lists, and `if` — fine to continue without a Python warm-up.
+
+**How we learned it:** runnable one-line examples (`uv run python -c "import re; …"`), then hints on the real exercise (hint A requested).
+
+**What I can now explain:** in progress.
+
+**Still unclear / open questions:** writing the patterns independently (Steps A and B).
+
+**Next session starts with:** finish Step A (`_BRACKET`) and Step B (`_REFERENCE`) until `uv run pytest tests/test_citations.py` is all green.
