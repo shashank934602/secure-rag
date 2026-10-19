@@ -216,3 +216,14 @@ loaded this log automatically, so the rule survived the new session.
 - **Lesson:** a two-line fix in *output parsing*, not a better model, tripled the answer rate. Check where an answer is lost before blaming the model.
 
 **Next session starts with:** live tests (`uv run pytest -m live`) and the Mistral chat swap, then release `v0.1.0`.
+
+**Update — Phase 1 closed, `v0.1.0` released (2026-10-19):**
+- Live tests: 2/2 pass on the real models.
+- The Mistral chat swap failed with **429 "Rate limit exceeded"**, even for one call made alone. Diagnosed by testing each model separately: on our free key, `mistral-small` and `mistral-medium` are rate-limited, `mistral-large` is not allowed (403), and `ministral-8b` and `open-mistral-nemo` work. The swap check now uses `ministral-8b-latest` (ISS-018).
+- **Lessons:**
+  - Read the error code before changing code. 429 means too many requests, 403 means not allowed, and neither one is a bug in our code.
+  - Free tiers are limited **per model**, so "my key works" doesn't mean "every model works".
+  - The swap proves our design: we changed AI company with one setting, and the citation checks and No-Answer still worked.
+- **Release:** a release is a named, tagged version (`v0.1.0`) of the code that we know works. We can always go back to it or compare against it.
+
+**Next session starts with:** Phase 2, Lesson 2 (vector databases, SQL, Docker, APIs). Start Docker Desktop beforehand.

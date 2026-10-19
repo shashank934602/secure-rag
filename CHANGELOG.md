@@ -13,6 +13,10 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-10-19 — Phase 1: basic RAG pipeline
+
+All Phase 1 checks pass: 45 offline tests, 2 live tests, golden set 6/7 answered + 3/3 No-Answer on real models, and the chat provider swapped (Groq → Mistral) with config only.
+
 ### Added
 
 - Project setup: `uv` project pinned to Python 3.12, Phase 1 dependencies, `uv.lock`.
@@ -61,6 +65,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 - API keys in `.env` are now exported to the process environment, where model clients read them (ISS-011).
 - Citations in the formats real models write, full-width `【doc_id:page】` and chunk ids `doc_id:page:index`, are now accepted; before, correct answers were thrown away as No-Answer (ISS-015). Golden set on real models: 6 of 7 answerable answered (was 2 of 7), 3 of 3 No-Answer.
+- Provider-swap check uses `mistralai:ministral-8b-latest`; `mistral-small-latest` is rate-limited on the free tier (ISS-018).
 
 ## Design — 2026-10-10
 

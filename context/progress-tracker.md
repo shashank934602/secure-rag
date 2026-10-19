@@ -4,11 +4,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
-All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3). **Phase 1 closes when** the live tests and Mistral chat swap pass. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
+**Phase 2 — Postgres, API, baseline eval** (`context/feature-specs/02-postgres-api-baseline.md`). Next: Lesson 2. **Phase 1 is done: released `v0.1.0` on 2026-10-19.**
+
+Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
+All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 1 closed — `v0.1.0`** (2026-10-19)
+  - `uv run pytest -m live`: 2 passed. Swap: `CHAT_MODEL=mistralai:ministral-8b-latest` answered g01 with a valid citation and gave No-Answer for an off-corpus question, with no code change.
 - **Warm-up exercise 1: citation formats** (2026-10-19, ISS-015)
   - Learner fixed `app/answering/citations.py`: accepts `【doc_id:page】` and `doc_id:page:index`. `tests/test_citations.py` has 10 tests from real model replies, and the full suite is 45 passed.
   - Golden rerun on real models: **6/7 answerable answered** (was 2/7), 3/3 No-Answer correct; only g06 missed (retrieval, ISS-017).
