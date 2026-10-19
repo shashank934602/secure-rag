@@ -13,6 +13,10 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- `lessons/01b-rag-concepts-and-functions.md`: the eight concepts behind the pipeline (RAG, tokens and chunking, embeddings, retrieval, prompt, generation and output checks, evaluation, swappable design), plus every function with a real input and output from our corpus.
+
 ## [0.1.0] — 2026-10-19 — Phase 1: basic RAG pipeline
 
 All Phase 1 checks pass: 45 offline tests, 2 live tests, golden set 6/7 answered + 3/3 No-Answer on real models, and the chat provider swapped (Groq → Mistral) with config only.

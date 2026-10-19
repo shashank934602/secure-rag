@@ -227,3 +227,12 @@ loaded this log automatically, so the rule survived the new session.
 - **Release:** a release is a named, tagged version (`v0.1.0`) of the code that we know works. We can always go back to it or compare against it.
 
 **Next session starts with:** Phase 2, Lesson 2 (vector databases, SQL, Docker, APIs). Start Docker Desktop beforehand.
+
+**Update — concepts before code (2026-10-19):**
+- The learner asked to learn the *concepts* behind the codebase, not just code. From now on: idea first, with real numbers, and code only as "where it lives".
+- Concepts covered, following one question through the system: RAG (open-book exam), tokens and chunking (overlap verified on real chunks), embeddings (1,024 numbers; "days off" ↔ "annual leave" scores 0.728, against 0.586 for a hotel sentence), and retrieval (top-k always returns something; the leave question's best score was 0.850, the unanswerable CEO question's only 0.692).
+- Notes written: `lessons/01b-rag-concepts-and-functions.md`, with eight concepts and every function with a real example. Check questions have folded answers.
+
+**Still unclear / open questions:** the learner's answers to the three check questions (why the CEO question isn't answered; why embeddings beat keywords; what 5,000-token chunks would break).
+
+**Next session starts with:** answer the three check questions, then concepts 5–8 (prompt, generation and checks, evaluation, swappable design), then Lesson 2.
