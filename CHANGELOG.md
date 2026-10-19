@@ -60,6 +60,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 ### Fixed (Phase 1)
 
 - API keys in `.env` are now exported to the process environment, where model clients read them (ISS-011).
+- Citations in the formats real models write, full-width `【doc_id:page】` and chunk ids `doc_id:page:index`, are now accepted; before, correct answers were thrown away as No-Answer (ISS-015).
 
 ## Design — 2026-10-10
 

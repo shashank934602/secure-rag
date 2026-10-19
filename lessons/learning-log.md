@@ -200,3 +200,10 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** typing the two patterns independently.
 
 **Next session starts with:** type the two patterns into `app/answering/citations.py` (lines 7–8). Then run `uv run pytest tests/test_citations.py -v` (expect 10 passed).
+
+**Update (later on 2026-10-19): warm-up exercise 1 done ✅ (ISS-015 closed)**
+- The learner typed both patterns. Results: `tests/test_citations.py` 10/10, full suite 45 passed, lint clean.
+- Review notes: the patterns are correct, and the old formats (`[a:1]`, `[a:1, b:2]`, ordinary brackets ignored) still behave. Two tidy-ups: the stray blank line between the constants was removed, and the docstring now says why the pattern accepts `【】` and `:index`. A strange-looking regex deserves a comment saying why.
+- **Lesson:** fake-model tests passed all along, but the real model writes things we didn't expect. Tests built from *real* outputs (here, verbatim replies) catch what made-up examples miss.
+
+**Next session starts with:** rerun the 10 golden questions on the real models (expect about 6/7 answered), then the live tests and the Mistral chat swap, then release `v0.1.0`.
