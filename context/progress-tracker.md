@@ -5,12 +5,13 @@ Update after every meaningful change. Describe what is actually built, not what 
 ## Current phase
 
 **Phase 1 — basic RAG pipeline** (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
-All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). **Phase 1 closes when** the golden rerun, live tests, and Mistral chat swap pass. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
+All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3). **Phase 1 closes when** the live tests and Mistral chat swap pass. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
 - **Warm-up exercise 1: citation formats** (2026-10-19, ISS-015)
   - Learner fixed `app/answering/citations.py`: accepts `【doc_id:page】` and `doc_id:page:index`. `tests/test_citations.py` has 10 tests from real model replies, and the full suite is 45 passed.
+  - Golden rerun on real models: **6/7 answerable answered** (was 2/7), 3/3 No-Answer correct; only g06 missed (retrieval, ISS-017).
 - **Mistral switch + first real run** (2026-10-15)
   - `EMBEDDING_MODEL` default `mistralai:mistral-embed` (1024-d), `langchain-mistralai` added; ADR-0005; 35 offline tests pass.
   - First real run (Mistral embeddings + Groq `gpt-oss-120b`): expected page in top-5 for 10/11 sources; answered 2/7 answerable; 3/3 trick questions → No-Answer. Failures: 4 × citation format (ISS-015), 1 × retrieval miss (ISS-017). Groq latency up to ~14 s on the free tier.

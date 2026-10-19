@@ -207,3 +207,12 @@ loaded this log automatically, so the rule survived the new session.
 - **Lesson:** fake-model tests passed all along, but the real model writes things we didn't expect. Tests built from *real* outputs (here, verbatim replies) catch what made-up examples miss.
 
 **Next session starts with:** rerun the 10 golden questions on the real models (expect about 6/7 answered), then the live tests and the Mistral chat swap, then release `v0.1.0`.
+
+**Update — golden rerun after the fix (2026-10-19):**
+- Real models (Mistral embeddings + Groq `gpt-oss-120b`), same 10 questions as 2026-10-15:
+  - **Answerable questions answered: 6/7** (was 2/7). g01, g03, g04 and g05 were rescued by the citation fix, and the replies still use `【】` and `:1:1`.
+  - **Trick questions answered with "I don't know": 3/3** (unchanged).
+  - The only miss is g06: the org chart is not in the top 5 search results, so "I don't know" is the right reply (ISS-017, Phase 3).
+- **Lesson:** a two-line fix in *output parsing*, not a better model, tripled the answer rate. Check where an answer is lost before blaming the model.
+
+**Next session starts with:** live tests (`uv run pytest -m live`) and the Mistral chat swap, then release `v0.1.0`.
