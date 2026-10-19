@@ -143,7 +143,7 @@ def test_prompt_wraps_chunks_in_document_tags_and_states_the_rules() -> None:
     [
         ("groq:openai/gpt-oss-120b", ChatGroq),
         ("openai:gpt-4.1-mini", ChatOpenAI),
-        ("mistralai:mistral-small-latest", ChatMistralAI),
+        ("mistralai:ministral-8b-latest", ChatMistralAI),
     ],
 )
 def test_chat_model_provider_is_swapped_by_config_only(

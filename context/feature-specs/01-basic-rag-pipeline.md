@@ -15,7 +15,7 @@ Answer a question from a small folder of local documents, with citations, from t
 | D5 | Any cited id not in the retrieved set → No-Answer. Zero citations → No-Answer (Invariant 7). No retry in Phase 1. |
 | D6 | Corpus: 11 synthetic documents for the fictional **Aldermoor Freight Ltd** (tenant A only), ~5.9k tokens, 23 chunks (expanded from 8 after review so top-5 stays selective). Fake PII uses only `example.com` addresses, `555-01xx` phone numbers, and invented `AF-` employee ids. |
 | D7 | Files are read with `pypdf` (PDF) and plain file reads (Markdown) into typed `Page` records (Pydantic, per code standards — LangChain `Document` metadata is an untyped dict); no `langchain-community`. Hidden files are ignored; other file types and duplicate doc ids are errors. |
-| D8 | The chat model is one `provider:model` string in config (default `groq:openai/gpt-oss-120b`, temperature 0), built with `init_chat_model`. The swap is proven with `mistralai:mistral-small-latest` (OpenAI dropped, ADR-0005). |
+| D8 | The chat model is one `provider:model` string in config (default `groq:openai/gpt-oss-120b`, temperature 0), built with `init_chat_model`. The swap is proven with `mistralai:ministral-8b-latest` (OpenAI dropped, ADR-0005; `mistral-small-latest` is rate-limited on the free tier, ISS-018). |
 | D9 | Golden set: 10 entries — 7 answerable (2 need two documents), 3 unanswerable (2 near-misses). |
 | D10 | Unit tests use fake chat and embedding models through the `answer(question)` seam. One live smoke test is marked `live` and runs only with `pytest -m live`. |
 | D11 | CLI prints the answer and a `Sources:` list; `--debug` also prints the retrieved chunks with similarity scores. Exit code 0 for answered and No-Answer, non-zero only on error. |
@@ -72,6 +72,6 @@ tests/
 - A question not answered in the corpus returns the No-Answer sentence.
 - An answer citing an id that wasn't retrieved is converted to No-Answer (fake LLM test).
 - An answer with no citations is converted to No-Answer (fake LLM test).
-- Setting `CHAT_MODEL=mistralai:mistral-small-latest` works without code changes.
+- Setting `CHAT_MODEL=mistralai:ministral-8b-latest` works without code changes.
 - `eval/datasets/golden.jsonl` has 10 entries (7 answerable, 3 unanswerable).
 - `uv run pytest` passes without network access; `uv run pytest -m live` passes with keys set.
