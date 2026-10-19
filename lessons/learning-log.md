@@ -184,3 +184,19 @@ loaded this log automatically, so the rule survived the new session.
 - `tests/test_citations.py` is committed while still red (6 failing). That is on purpose: it's the exercise.
 
 **Next session starts with:** type the two patterns into `app/answering/citations.py` (lines 7–8). Then run `uv run pytest tests/test_citations.py -v` (expect 10 passed) and `uv run pytest`, and close ISS-015.
+
+---
+
+## 2026-10-19 — Picking up: status check
+
+**Where we are:** Phase 2 step 1. Phase 1 closes once ISS-015 is fixed. Checked today: `app/answering/citations.py` still has the old patterns. `uv run pytest` gives 39 passed and 6 failed, and all 6 failures are the exercise tests. GitHub is in sync.
+
+**What we learned:** nothing new yet. The session started with a status check.
+
+**How we learned it:** —
+
+**What I can now explain:** in progress (regex Steps A and B, explained 2026-10-16).
+
+**Still unclear / open questions:** typing the two patterns independently.
+
+**Next session starts with:** type the two patterns into `app/answering/citations.py` (lines 7–8). Then run `uv run pytest tests/test_citations.py -v` (expect 10 passed).
