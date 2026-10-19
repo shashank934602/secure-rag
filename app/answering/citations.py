@@ -1,11 +1,15 @@
-"""Find `[doc_id:page]` citations in an answer and check them against the retrieved chunks."""
+"""Find `[doc_id:page]` citations in an answer and check them against the retrieved chunks.
+
+Real models also write full-width brackets `【doc_id:page】` and chunk ids `doc_id:page:index`;
+both are accepted and reduced to the document and page (ISS-015).
+"""
 
 import re
 
 from app.domain import Citation, ScoredChunk
 
-_BRACKET = re.compile(r"\[([^\[\]]+)\]")
-_REFERENCE = re.compile(r"^\s*([a-z0-9][a-z0-9-]*):(\d+)\s*$")
+_BRACKET = re.compile(r"[\[【]([^\[\]【】]+)[\]】]")
+_REFERENCE = re.compile(r"^\s*([a-z0-9][a-z0-9-]*):(\d+)(?::\d+)?\s*$")
 
 
 def parse_citations(text: str) -> list[Citation]:
