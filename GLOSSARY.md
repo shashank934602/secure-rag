@@ -34,6 +34,18 @@ _Avoid_: document name, file id
 A contiguous slice of a document's text that is embedded and retrieved as a unit; inherits the document's ACL.
 _Avoid_: passage, segment, split
 
+**Content hash**:
+A SHA-256 fingerprint of a document's bytes; if it hasn't changed, re-ingesting the document is skipped.
+_Avoid_: checksum, etag
+
+**Ingest**:
+Load, chunk, embed, and store a document's chunks so they can be retrieved; re-running it on unchanged documents changes nothing.
+_Avoid_: index (as a verb), import, sync
+
+**Retriever**:
+Anything with `search(question, k)` that returns the k most similar chunks with scores; in-memory for unit tests, Postgres in the app.
+_Avoid_: search engine, vector store (that is one implementation detail)
+
 **Corpus version**:
 A counter that increases whenever any document in a tenant is added, changed, or removed.
 _Avoid_: index version
@@ -98,3 +110,29 @@ Ordinary questions used to measure false refusals.
 
 **Eval gate**:
 The thresholds a change must meet in CI before it can merge.
+
+**Baseline**:
+The eval scores of a fixed, committed version (`eval/baselines/phase2.json`); later changes are compared against it.
+_Avoid_: benchmark, reference run
+
+**Key fact**:
+A short phrase an answer must contain to count as correct (e.g. `25 days`); answer correctness is the share of key facts found.
+_Avoid_: keyword, expected token
+
+**Recall@5**:
+For an answerable question, the share of its expected sources (`doc_id:page`) that appear in the top 5 retrieved chunks.
+_Avoid_: hit rate, accuracy
+
+**MRR (mean reciprocal rank)**:
+The average of 1 / (rank of the first expected source in the results), or 0 when none is found; rewards putting the right chunk first.
+_Avoid_: average rank
+
+## Operations
+
+**Migration**:
+A versioned, ordered SQL change to the database schema (`db/migrations/`), applied by Alembic; never edited after it has been applied.
+_Avoid_: schema update, DDL script
+
+**App role**:
+The non-superuser database role `rag_app` the application connects as; it can read and write rows but cannot bypass row-level security or change the schema.
+_Avoid_: db user, service account

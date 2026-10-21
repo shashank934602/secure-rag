@@ -15,6 +15,8 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Phase 2 spec completed: implementation, layout, 7 slices (ISS-020 … ISS-026), scope limits, done checks. Docker Postgres on port 5433.
+- Glossary: content hash, ingest, retriever, baseline, key fact, recall@5, MRR, migration, app role.
 - `lessons/01b-rag-concepts-and-functions.md`: the eight concepts behind the pipeline (RAG, tokens and chunking, embeddings, retrieval, prompt, generation and output checks, evaluation, swappable design), plus every function with a real input and output from our corpus.
 
 ## [0.1.0] — 2026-10-19 — Phase 1: basic RAG pipeline

@@ -263,3 +263,12 @@ loaded this log automatically, so the rule survived the new session.
 - Lessons: injection = hidden *commands*; poisoning = false *facts*. **Grounded ≠ true.** Defences for poisoning are about *who may add documents* and *which is authoritative*, not the prompt. Logged as ISS-019.
 
 **Next session starts with:** the three Concept 5 check questions, then Concept 6 (generation and temperature).
+
+**Update — implementation started: Phase 2 step 3, spec and slices (2026-10-21):**
+- The learner asked to start building. We switched to **learn while building**: each slice opens with the concept it needs.
+- Concept: a **spec** says what to build, how we know it's done, and what we won't do. A **slice** is a small, end-to-end, testable piece that ends green and pushed, so mistakes stay small and recent.
+- Spec 02 completed, and Phase 2 cut into 7 slices (ISS-020 … ISS-026). The learner writes S3 (Postgres search query) and S6 (eval metrics).
+- Found: a local Postgres already uses port 5432, so our Docker database uses **5433**. A port is a numbered door; only one program can answer each.
+- New glossary terms added *before* code: content hash, ingest, retriever, baseline, key fact, recall@5, MRR, migration, app role.
+
+**Next session starts with:** S1 (Docker Postgres + migrations), once Docker Desktop is running; or S5 (golden set to 20) if it isn't.
