@@ -186,6 +186,26 @@ The cost of being strict: on the first real run our checker rejected **4 correct
 `【expense-policy:1:1】` instead of `[expense-policy:1]` (ISS-015). Your fix made the parser **tolerant of harmless
 format differences** while staying **strict about what matters**: the document and page must still be ones we retrieved.
 
+### What these checks *can't* catch — grounding (demo, 2026-10-21)
+
+We fed three bluffs for "What is the CEO's salary?" through the real checks: real Mistral search, and a fake model
+that says exactly what we script. The retrieved pages were `annual-leave-policy:1`, `expense-policy:1` and `sickness-absence-policy:1`.
+
+| The model says | Result |
+|----------------|--------|
+| "The CEO earns £200,000 a year [expense-policy:1]." | ❌ **shown as an answer**: it has a citation, and that page was retrieved |
+| "The CEO earns £200,000 a year." | ✅ No-Answer: no citation |
+| "The CEO earns £200,000 a year [org-chart:1]." | ✅ No-Answer: that page wasn't retrieved |
+
+Our checks verify that a citation **exists** and points to a **retrieved** page. They never check that the page
+**supports the claim**. A claim is **grounded** when its cited text really says it. Checking that needs
+*understanding*, not a regex. The fix is a **grounding judge**: a second model, from a different family so it
+doesn't favour its own style, that rules "supported / not supported" (Phase 5). **Faithfulness** measures the same
+thing over the golden set (Phase 7, target ≥ 0.85).
+
+Lesson: every check has limits. Write them down, and stack defences in layers (prompt rule → citation checks →
+grounding judge → evaluation).
+
 ## Concept 7 — Evaluation: measure, don't guess
 
 A **golden set** (`eval/datasets/golden.jsonl`) holds 10 questions with known right answers and sources: 7

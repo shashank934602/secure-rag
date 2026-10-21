@@ -243,12 +243,16 @@ loaded this log automatically, so the rule survived the new session.
 
 **Where we are:** Phase 1 done (`v0.1.0`). Phase 2 not started; Lesson 2 comes next. Concept notes `lessons/01b-rag-concepts-and-functions.md` are written, and concepts 1–4 have been taught. The repo is clean and in sync.
 
-**What we learned:** nothing new yet. The session started with "what's next".
+**What we learned:**
+- **Search finds what's close; it never decides what's present or true.** It always returns 5 chunks. "I don't know" comes from prompt rule 3 plus the citation checks.
+- Embeddings capture **meaning, not spelling**: they were learned from how words are used, so "days off" ≈ "annual leave".
+- Huge chunks blur many topics into one set of numbers, so every question looks a bit similar to every chunk.
+- **Grounding:** our checks verify that a citation *exists* and points to a *retrieved* page, not that the page *supports* the claim. Demo: "The CEO earns £200,000 [expense-policy:1]" was **shown as an answer**. The fix is a grounding judge (Phase 5) and the faithfulness metric (Phase 7).
 
-**How we learned it:** —
+**How we learned it:** answered three check questions, got feedback, then a follow-up scenario tested with a scripted fake model on real search (3 bluffs, 1 got through).
 
-**What I can now explain:** pending (the three check questions on concepts 1–4).
+**What I can now explain:** that we turn text into numbers to search, and that a cited answer gets returned. Partly: the learner first thought the checks verify "proof", and the demo corrected this. Still to firm up: *why* embeddings match meaning, and *who* decides "I don't know" (the model's rule and the checks, not search).
 
-**Still unclear / open questions:** same three check questions.
+**Still unclear / open questions:** none raised. Watch for confusion between "close" (search) and "true" (grounding).
 
-**Next session starts with:** answer the three check questions, then concepts 5–8, then Lesson 2.
+**Next session starts with:** concepts 5–8 (prompt, generation and checks, evaluation, swappable design), then Lesson 2.
