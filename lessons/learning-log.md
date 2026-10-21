@@ -236,3 +236,19 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** the learner's answers to the three check questions (why the CEO question isn't answered; why embeddings beat keywords; what 5,000-token chunks would break).
 
 **Next session starts with:** answer the three check questions, then concepts 5–8 (prompt, generation and checks, evaluation, swappable design), then Lesson 2.
+
+---
+
+## 2026-10-21 — Picking up: concepts 1–4 check, then 5–8
+
+**Where we are:** Phase 1 done (`v0.1.0`). Phase 2 not started; Lesson 2 comes next. Concept notes `lessons/01b-rag-concepts-and-functions.md` are written, and concepts 1–4 have been taught. The repo is clean and in sync.
+
+**What we learned:** nothing new yet. The session started with "what's next".
+
+**How we learned it:** —
+
+**What I can now explain:** pending (the three check questions on concepts 1–4).
+
+**Still unclear / open questions:** same three check questions.
+
+**Next session starts with:** answer the three check questions, then concepts 5–8, then Lesson 2.
