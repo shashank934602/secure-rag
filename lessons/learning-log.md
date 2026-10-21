@@ -256,3 +256,10 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** none raised. Watch for confusion between "close" (search) and "true" (grounding).
 
 **Next session starts with:** concepts 5–8 (prompt, generation and checks, evaluation, swappable design), then Lesson 2.
+
+**Update — Concept 5, the prompt (2026-10-21):**
+- What the model reads for one question: 134 tokens of rules + 1,394 tokens of chunks; the question is only 10. Cost comes from `top_k` × chunk size.
+- Real attacks on our pipeline: the **blunt injection** ("you are a pirate") was **resisted** (rule 4 worked this time). The **subtle poisoning** ("from 2026 everyone gets 40 days") **fooled it**, and the answer passed every check.
+- Lessons: injection = hidden *commands*; poisoning = false *facts*. **Grounded ≠ true.** Defences for poisoning are about *who may add documents* and *which is authoritative*, not the prompt. Logged as ISS-019.
+
+**Next session starts with:** the three Concept 5 check questions, then Concept 6 (generation and temperature).
