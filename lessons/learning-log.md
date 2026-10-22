@@ -272,3 +272,19 @@ loaded this log automatically, so the rule survived the new session.
 - New glossary terms added *before* code: content hash, ingest, retriever, baseline, key fact, recall@5, MRR, migration, app role.
 
 **Next session starts with:** S1 (Docker Postgres + migrations), once Docker Desktop is running; or S5 (golden set to 20) if it isn't.
+
+---
+
+## 2026-10-22 — Picking up: status check before S1
+
+**Where we are:** Phase 2, step 3 done (spec complete, sliced into S1–S7, ISS-020 … ISS-026). No slice started yet. Docker Desktop is still not running. The repo is clean and in sync.
+
+**What we learned:** nothing new yet. The session started with "where are we".
+
+**How we learned it:** —
+
+**What I can now explain:** pending (Concept 5 check questions still open).
+
+**Still unclear / open questions:** none new.
+
+**Next session starts with:** S1 (Docker Postgres + migrations) once Docker is running, or S5 (golden set to 20) without Docker.
