@@ -279,12 +279,18 @@ loaded this log automatically, so the rule survived the new session.
 
 **Where we are:** Phase 2, step 3 done (spec complete, sliced into S1–S7, ISS-020 … ISS-026). No slice started yet. Docker Desktop is still not running. The repo is clean and in sync.
 
-**What we learned:** nothing new yet. The session started with "where are we".
+**What we learned (S1, the database):**
+- **Why a database:** Phase 1 re-embedded all 23 chunks on every question. A database keeps chunks and vectors on disk: embed once, search many times.
+- **Postgres + pgvector:** tables with fixed column types; `vector(1024)` stores an embedding, and the table itself rejects a 1,536-number vector.
+- **Docker:** image = recipe, container = running box, volume = its disk, port 5433 = the door (5432 was taken).
+- **Migrations:** numbered SQL scripts that Alembic applies in order and records in `alembic_version`; never edited once run.
+- **Least privilege:** the app logs in as `rag_app`, which can read and write rows but can't drop tables (real result: `InsufficientPrivilege`) and isn't a superuser, so Phase 4's row-level security will apply to it.
+- **HNSW index:** a neighbour map so search doesn't compare every row; it's approximate.
 
-**How we learned it:** —
+**How we learned it:** concept intro, then tests first (red: no `app.db`), then the build. 10/11 passed on the first run; the failure was in the test (a pgvector `Vector` has no `len()`, use `.dimensions()`). Then the real dev database was started and migrated, and we checked tables, columns, and roles with `psql`.
 
-**What I can now explain:** pending (Concept 5 check questions still open).
+**What I can now explain:** pending (the S1 check questions in `lessons/02-databases-and-apis.md`).
 
-**Still unclear / open questions:** none new.
+**Still unclear / open questions:** none raised.
 
-**Next session starts with:** S1 (Docker Postgres + migrations) once Docker is running, or S5 (golden set to 20) without Docker.
+**Next session starts with:** S1 check questions, then S2 ingest (ISS-021): transactions, hashing, idempotency.

@@ -4,13 +4,18 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 2 — Postgres, API, baseline eval** (`context/feature-specs/02-postgres-api-baseline.md`). Spec complete and sliced into S1–S7 (ISS-020 … ISS-026) on 2026-10-21. Next: S1 (needs Docker), or S5 (no Docker). **Phase 1 is done: released `v0.1.0` on 2026-10-19.**
+**Phase 2 — Postgres, API, baseline eval** (`context/feature-specs/02-postgres-api-baseline.md`). Spec complete and sliced into S1–S7 (ISS-020 … ISS-026) on 2026-10-21. S1 done (2026-10-22). Next: S2 ingest (ISS-021). **Phase 1 is done: released `v0.1.0` on 2026-10-19.**
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 2 S1 — database** (2026-10-22, ISS-020)
+  - `docker-compose.yml`: `pgvector/pgvector:pg16` (pgvector 0.8.7) on `127.0.0.1:5433`, data in volume `pgdata`, healthcheck.
+  - `db/`: Alembic with raw-SQL migration `0001_initial_schema` — `tenants`, `users`, `documents`, `chunks` (`vector(1024)`, HNSW `vector_cosine_ops`, `(tenant_id, is_active)` index), seed tenant Aldermoor `{employee}`, role `rag_app` (no superuser, no BYPASSRLS, row-level CRUD only).
+  - `app/db.py` `connect(url)` with pgvector types; `Settings.database_url` / `database_admin_url`.
+  - Tests: 11 `db` tests (`uv run pytest -m db`, testcontainers); 45 offline tests still pass. Dev database migrated to `0001 (head)`; app logs in as `rag_app`, cannot drop tables.
 - **Phase 1 closed — `v0.1.0`** (2026-10-19)
   - `uv run pytest -m live`: 2 passed. Swap: `CHAT_MODEL=mistralai:ministral-8b-latest` answered g01 with a valid citation and gave No-Answer for an off-corpus question, with no code change.
 - **Warm-up exercise 1: citation formats** (2026-10-19, ISS-015)

@@ -15,6 +15,9 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Local Postgres + pgvector in Docker (`docker-compose.yml`, port 5433) and Alembic raw-SQL migrations in `db/`: tenants, users, documents, chunks with `vector(1024)` and an HNSW cosine index; seed tenant; non-superuser `rag_app` role (ISS-020).
+- Database tests marked `db` run against a throwaway container (`uv run pytest -m db`); new deps `psycopg`, `pgvector`, `alembic`, dev `testcontainers` (ISS-020).
+- `lessons/02-databases-and-apis.md`: S1 section — databases, Docker, migrations, least privilege.
 - Phase 2 spec completed: implementation, layout, 7 slices (ISS-020 … ISS-026), scope limits, done checks. Docker Postgres on port 5433.
 - Glossary: content hash, ingest, retriever, baseline, key fact, recall@5, MRR, migration, app role.
 - `lessons/01b-rag-concepts-and-functions.md`: the eight concepts behind the pipeline (RAG, tokens and chunking, embeddings, retrieval, prompt, generation and output checks, evaluation, swappable design), plus every function with a real input and output from our corpus.

@@ -60,4 +60,6 @@ Rules:
 
 - Run from this folder. Python 3.12 via `uv`; deps in `pyproject.toml`.
 - Install / sync: `uv sync`. Add a dep: `uv add <pkg>` (dev: `uv add --dev <pkg>`).
-- Tests: `uv run pytest`. Lint: `uv run ruff check .`
+- Tests: `uv run pytest` (offline, no Docker). Database tests: `uv run pytest -m db` (needs Docker). Real models: `uv run pytest -m live`. Lint: `uv run ruff check .`
+- Database (Docker Desktop must be running): `docker compose up -d` → `uv run alembic -c db/alembic.ini upgrade head`. Stop: `docker compose down` (data kept). Inspect: `docker compose exec db psql -U postgres -d rag`.
+- Never connect the app as the admin; it uses `DATABASE_URL` (the `rag_app` role).
