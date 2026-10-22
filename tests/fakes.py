@@ -30,13 +30,17 @@ class ScriptedChatModel(BaseChatModel):
 class KeywordEmbeddings(Embeddings):
     """Bag-of-words vectors over a fixed vocabulary, so similarity is predictable in tests."""
 
-    def __init__(self, vocabulary: list[str]) -> None:
+    def __init__(self, vocabulary: list[str], dimensions: int | None = None) -> None:
         self.vocabulary = [word.lower() for word in vocabulary]
+        self.dimensions = dimensions  # pad with zeros to fit a fixed column, e.g. vector(1024)
 
     def _embed(self, text: str) -> list[float]:
         words = re.findall(r"[a-z0-9]+", text.lower())
         # The small constant keeps texts with no vocabulary words from being zero vectors.
-        return [float(words.count(term)) for term in self.vocabulary] + [0.01]
+        vector = [float(words.count(term)) for term in self.vocabulary] + [0.01]
+        if self.dimensions is not None:
+            vector += [0.0] * (self.dimensions - len(vector))  # zeros don't change cosine
+        return vector
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [self._embed(text) for text in texts]

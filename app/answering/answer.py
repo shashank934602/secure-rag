@@ -14,6 +14,7 @@ from app.domain import AnswerResult, ScoredChunk
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
 from app.retrieval.embeddings import make_embeddings
+from app.retrieval.retriever import Retriever
 from app.retrieval.search import ChunkIndex
 
 NO_ANSWER = "I don't know based on the documents I can access."
@@ -22,7 +23,7 @@ _PROMPTS = Path(__file__).resolve().parent.parent / "prompts"
 
 
 class Answerer:
-    def __init__(self, index: ChunkIndex, chat_model: BaseChatModel, top_k: int) -> None:
+    def __init__(self, index: Retriever, chat_model: BaseChatModel, top_k: int) -> None:
         self.index = index
         self.chat_model = chat_model
         self.top_k = top_k
