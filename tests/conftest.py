@@ -7,7 +7,7 @@ import pytest
 
 from app.config import ROOT
 
-PG_IMAGE = "pgvector/pgvector:pg16"
+PG_IMAGE = "pgvector/pgvector:0.8.7-pg16"  # same image as docker-compose.yml
 APP_PASSWORD = "test-app-password"
 
 

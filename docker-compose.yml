@@ -9,7 +9,7 @@
 # this machine may connect. The password comes from .env, never from this file.
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:0.8.7-pg16  # pinned: pgvector 0.8.7 on Postgres 16
     environment:
       POSTGRES_DB: rag
       POSTGRES_USER: postgres

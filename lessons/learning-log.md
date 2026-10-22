@@ -294,3 +294,8 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** none raised.
 
 **Next session starts with:** S1 check questions, then S2 ingest (ISS-021): transactions, hashing, idempotency.
+
+**Update — health check (2026-10-22):**
+- All green: 45 offline, 11 db, and 2 live tests pass; lint clean; dev database healthy at `0001 (head)`; repo in sync.
+- Fixed one risk: the image tag `pg16` floats (it can silently change), so it's pinned to `0.8.7-pg16`. Recreating the container kept the data, because it lives in the volume, not the container.
+- Open: rotation of the OpenAI and Groq keys (exposed 2026-10-15) still unconfirmed; check questions for Concept 5 and S1 unanswered.
