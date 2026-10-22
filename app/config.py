@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # Retrieval.
     top_k: int = 5
 
+    # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
+    database_url: str = ""
+    database_admin_url: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
