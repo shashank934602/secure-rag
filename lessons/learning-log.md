@@ -318,3 +318,5 @@ loaded this log automatically, so the rule survived the new session.
 - Plumbing: a `Retriever` protocol; `Answerer` accepts any retriever.
 
 **Next session starts with:** fill the five blanks until `uv run pytest -m db tests/test_pg_search.py -v` shows 14 passed.
+
+**Question asked — "why aren't we using a vector DB?" (2026-10-22):** we are: pgvector makes Postgres one. We chose not to add a *dedicated* vector DB (ADR-0001) because security needs vectors, documents, and permissions in one place, with one transaction and database-enforced isolation; pgvector is fast enough at our scale. The comparison was added to `lessons/02-databases-and-apis.md`.

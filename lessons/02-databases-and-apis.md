@@ -50,6 +50,24 @@ The table **enforces rules itself**, so a bug in our Python can't break them. Ea
 **HNSW** builds a "map of neighbours" so search jumps to the right area. It's *approximate*: very fast, and occasionally
 misses a true neighbour. A second index on `(tenant_id, is_active)` speeds up "only this company's live chunks".
 
+### "Why not a vector database?" (asked 2026-10-22)
+
+We **are** using one: pgvector makes Postgres a vector database. What we skipped is a *dedicated* one (Pinecone, Qdrant,
+Weaviate, Chroma). Decision: ADR-0001.
+
+| | Dedicated vector DB | Postgres + pgvector (ours) |
+|---|---|---|
+| Vector search | excellent | good (same HNSW algorithm) |
+| Hundreds of millions of vectors, very high traffic | wins | possible, needs tuning |
+| Documents, users, tenants, audit in the same place | no: a second database | yes |
+| One transaction across vectors and other data (S2) | no | yes |
+| Company isolation enforced by the database (row-level security, Phase 4) | filters you must remember | yes |
+| Systems to run and back up | 2+ | 1 |
+
+For a **secure** RAG system, the hard problem is *who may see what*, not raw speed, and at our scale (23 chunks; a small
+company might have about 100k) pgvector is fast enough. Cost of the choice: a very selective filter can make HNSW return
+fewer than k rows, which pgvector ≥ 0.8 fixes with iterative scan (hence the pinned 0.8.7).
+
 ### Docker
 
 Docker runs a program inside a **container**, a sealed box with everything it needs, separate from your Mac.
