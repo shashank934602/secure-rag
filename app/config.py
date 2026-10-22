@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
     database_url: str = ""
     database_admin_url: str = ""
+    tenant: str = "Aldermoor"  # the one seeded tenant until auth arrives (Phase 4)
 
 
 @lru_cache

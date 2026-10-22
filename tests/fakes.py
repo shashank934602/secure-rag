@@ -1,5 +1,6 @@
 """Test doubles for model clients. Real-model quality is measured in eval/, not here."""
 
+import hashlib
 import re
 from typing import Any
 
@@ -41,4 +42,27 @@ class KeywordEmbeddings(Embeddings):
         return [self._embed(text) for text in texts]
 
     def embed_query(self, text: str) -> list[float]:
+        return self._embed(text)
+
+
+class CountingEmbeddings(Embeddings):
+    """Deterministic vectors of any size from a hash of the text; counts every text embedded.
+
+    The count is what ingest tests check: unchanged documents must cost zero embedding calls.
+    """
+
+    def __init__(self, dimensions: int = 1024) -> None:
+        self.dimensions = dimensions
+        self.embedded: list[str] = []
+
+    def _embed(self, text: str) -> list[float]:
+        digest = hashlib.sha256(text.encode()).digest()
+        return [digest[i % len(digest)] / 255 + 0.01 for i in range(self.dimensions)]
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        self.embedded.extend(texts)
+        return [self._embed(text) for text in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        self.embedded.append(text)
         return self._embed(text)
