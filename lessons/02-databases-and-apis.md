@@ -7,7 +7,7 @@
 |-------|---------|--------|
 | S1 | Databases, Docker, migrations, least privilege | ✅ 2026-10-22 |
 | S2 | Ingest: transactions, hashing, idempotency | ✅ 2026-10-22 |
-| S3 | Vector search in SQL | — |
+| S3 | Vector search in SQL | ✍️ exercise set 2026-10-22 |
 | S4 | APIs and HTTP | — |
 | S5 | What makes a good test question | — |
 | S6 | Metrics: recall@5, MRR, key facts | — |
@@ -173,3 +173,80 @@ the count in the test instead of hard-coding a guess.
 2. Everything would roll back, so none of the 11 would be saved, even the 10 good ones. Per-document transactions isolate failures.
 3. Only the expense policy's chunks (2) are embedded: its fingerprint changed; the other 10 match and are skipped.
 </details>
+
+---
+
+## S3 — Vector search in SQL ✍️ (ISS-022)
+
+### SQL in six words
+
+```sql
+SELECT   <columns>                      -- what to give back
+FROM     <table>                        -- where to look
+JOIN     <other table> ON <link>        -- bring in a related table
+WHERE    <conditions joined by AND>     -- which rows count
+ORDER BY <expression>                   -- in what order (ASC = smallest first, the default)
+LIMIT    <n>                            -- how many
+```
+
+Real examples on our database (2026-10-22):
+
+| Query | Result |
+|-------|--------|
+| `SELECT slug, source FROM documents ORDER BY slug LIMIT 3;` | `annual-leave-policy`, `employee-handbook`, `expense-policy` |
+| `… FROM chunks c JOIN documents d ON d.id = c.document_id WHERE d.slug LIKE 'vendor%'` | each chunk *with its document's slug*: the JOIN links a chunk to its document |
+| `SELECT ARRAY['employee'] && ARRAY['employee','hr']` | `t`: `&&` means "share at least one element" |
+
+### Distance vs similarity
+
+pgvector's `<=>` gives the **cosine distance** between two vectors: **0 = same direction (same meaning)**, larger = less related.
+Our app's `score` is **cosine similarity**: **1 = same meaning**. They're two views of one number:
+
+> **similarity = 1 − distance**
+
+Real result: the leave policy's first chunk compared with every chunk:
+
+| Chunk | Distance | Similarity |
+|-------|---------:|-----------:|
+| annual-leave-policy, chunk 0 (itself) | 0.000 | 1.000 |
+| annual-leave-policy, chunk 1 | 0.067 | 0.933 |
+| sickness-absence-policy, chunk 0 | 0.088 | 0.912 |
+| remote-work-policy, chunk 0 | 0.093 | 0.907 |
+
+### Why "order by the distance itself"
+
+The HNSW index (S1) is a map organised by **distance**. Postgres can walk it to find "closest first", but only when the
+query says `ORDER BY embedding <=> <question>` (ascending). If you order by something *computed from* the distance (like
+`score DESC`), Postgres can't use the map: it computes every row's score and sorts them all. That's the same answer,
+but slow on a million chunks.
+
+### Parameters, not pasted values
+
+Values arrive as `%(name)s` placeholders, and psycopg sends them separately from the SQL text. Never build SQL by pasting
+values into the string: that is how **SQL injection** happens (S1).
+
+### The exercise
+
+File: `app/retrieval/pg_search.py`, the `_SEARCH_SQL` string. Tests: `uv run pytest -m db tests/test_pg_search.py -v` (14 tests).
+Fill in the five blanks:
+
+```sql
+SELECT d.slug, d.source, c.page, c.chunk_index, c.content,
+       ①_____ AS score
+FROM chunks c
+JOIN documents d ON ②_____
+WHERE ③_____
+ORDER BY ④_____
+LIMIT ⑤_____
+```
+
+| Blank | Hint | Test that checks it |
+|-------|------|---------------------|
+| ① | similarity from distance; the question's vector is `%(embedding)s` | `test_score_is_cosine_similarity_not_distance` |
+| ② | which column of a chunk points to its document? (see the JOIN example above) | `test_chunk_has_its_id_…` |
+| ③ | three conditions: same tenant, active, shares a role (`&&`) | the three "never returned" tests |
+| ④ | closest first, using the distance itself | `test_the_query_can_use_the_hnsw_index` |
+| ⑤ | a placeholder | `test_returns_at_most_k_chunks` |
+
+Columns you can use: `chunks c`: `document_id, tenant_id, allowed_roles, page, chunk_index, content, embedding, is_active`;
+`documents d`: `id, slug, source`.

@@ -310,3 +310,11 @@ loaded this log automatically, so the rule survived the new session.
 - Real database now: 11 documents, 23 chunks, 1,024 numbers each, from `mistral-embed`.
 
 **Next session starts with:** S2 check questions, then **S3: you write the Postgres search query** (ISS-022).
+
+**Update — S3 exercise set (2026-10-22, ISS-022):**
+- Concepts taught on the real database: the SQL shape (SELECT, FROM, JOIN, WHERE, ORDER BY, LIMIT); `<=>` = cosine **distance** (0 = same) vs our **similarity** score (1 = same), where similarity = 1 − distance; `&&` = arrays share an element; order by the distance itself so the HNSW index can be used; parameters instead of pasted values.
+- Exercise: write `_SEARCH_SQL` in `app/retrieval/pg_search.py` against 14 tests (`tests/test_pg_search.py`), with a five-blank scaffold in `lessons/02-databases-and-apis.md`.
+- Checked the exercise is fair before handing it over: a correct query passes 14/14, and three typical mistakes (`ORDER BY score DESC`, forgetting `is_active`, returning distance as the score) are each caught. One test first failed for a correct query (Postgres chose the other index and sorted). The test was fixed to also forbid sorting.
+- Plumbing: a `Retriever` protocol; `Answerer` accepts any retriever.
+
+**Next session starts with:** fill the five blanks until `uv run pytest -m db tests/test_pg_search.py -v` shows 14 passed.
