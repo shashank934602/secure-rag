@@ -19,6 +19,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Ingest command `python -m app.ingest`: fingerprints skip unchanged documents, one transaction per document, removed files deleted, failures rolled back and reported (ISS-021).
 - Local Postgres + pgvector in Docker (`docker-compose.yml`, port 5433) and Alembic raw-SQL migrations in `db/`: tenants, users, documents, chunks with `vector(1024)` and an HNSW cosine index; seed tenant; non-superuser `rag_app` role (ISS-020).
 - Database tests marked `db` run against a throwaway container (`uv run pytest -m db`); new deps `psycopg`, `pgvector`, `alembic`, dev `testcontainers` (ISS-020).
 - `lessons/02-databases-and-apis.md`: S1 section — databases, Docker, migrations, least privilege.

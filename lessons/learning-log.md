@@ -299,3 +299,14 @@ loaded this log automatically, so the rule survived the new session.
 - All green: 45 offline, 11 db, and 2 live tests pass; lint clean; dev database healthy at `0001 (head)`; repo in sync.
 - Fixed one risk: the image tag `pg16` floats (it can silently change), so it's pinned to `0.8.7-pg16`. Recreating the container kept the data, because it lives in the volume, not the container.
 - Open: rotation of the OpenAI and Groq keys (exposed 2026-10-15) still unconfirmed; check questions for Concept 5 and S1 unanswered.
+
+**Update — S2 ingest done (2026-10-22, ISS-021):**
+- **Fingerprints:** a SHA-256 hash per file. Same fingerprint means skip: the 2nd real run took 0.7 s (the 1st took 9.6 s) and made **zero** Mistral calls.
+- **Transactions:** update the document, delete its old chunks, and insert the new ones, all or nothing. Proven by a test where a wrong-size vector makes the insert fail and the old version survives.
+- **Per-document transactions:** one bad file is reported (`failed`), and the other 10 still go in.
+- **Idempotency:** run it as often as you like; same result, no cost.
+- Embed *before* the transaction, so slow network calls don't hold database locks.
+- Testing lesson: a test that *guessed* a number (org chart = 1 chunk) was wrong; measuring it in the test fixed it.
+- Real database now: 11 documents, 23 chunks, 1,024 numbers each, from `mistral-embed`.
+
+**Next session starts with:** S2 check questions, then **S3: you write the Postgres search query** (ISS-022).

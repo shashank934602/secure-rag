@@ -4,13 +4,17 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 2 — Postgres, API, baseline eval** (`context/feature-specs/02-postgres-api-baseline.md`). Spec complete and sliced into S1–S7 (ISS-020 … ISS-026) on 2026-10-21. S1 done (2026-10-22). Next: S2 ingest (ISS-021). **Phase 1 is done: released `v0.1.0` on 2026-10-19.**
+**Phase 2 — Postgres, API, baseline eval** (`context/feature-specs/02-postgres-api-baseline.md`). Spec complete and sliced into S1–S7 (ISS-020 … ISS-026) on 2026-10-21. S1–S2 done (2026-10-22). Next: S3, the learner's Postgres search (ISS-022). **Phase 1 is done: released `v0.1.0` on 2026-10-19.**
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 2 S2 — ingest** (2026-10-22, ISS-021)
+  - `python -m app.ingest`: per-file SHA-256 fingerprint; unchanged → skipped; new/changed → chunk, embed (outside the transaction), then upsert document (version + 1) and replace its chunks in one transaction; removed files deleted (chunks cascade); failures rolled back and reported, exit 1.
+  - `connect(url, autocommit=)`; `Settings.tenant`; test fake `CountingEmbeddings`.
+  - Tests: 20 `db` (9 new), 45 offline. Dev DB: 11 documents / 23 chunks, `vector_dims` 1024, `mistralai:mistral-embed`; 1st run 9.6 s, 2nd run 0.7 s with no embedding calls.
 - **Phase 2 S1 — database** (2026-10-22, ISS-020)
   - `docker-compose.yml`: `pgvector/pgvector:pg16` (pgvector 0.8.7) on `127.0.0.1:5433`, data in volume `pgdata`, healthcheck.
   - `db/`: Alembic with raw-SQL migration `0001_initial_schema` — `tenants`, `users`, `documents`, `chunks` (`vector(1024)`, HNSW `vector_cosine_ops`, `(tenant_id, is_active)` index), seed tenant Aldermoor `{employee}`, role `rag_app` (no superuser, no BYPASSRLS, row-level CRUD only).

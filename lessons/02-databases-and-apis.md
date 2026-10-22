@@ -6,7 +6,7 @@
 | Slice | Section | Status |
 |-------|---------|--------|
 | S1 | Databases, Docker, migrations, least privilege | ✅ 2026-10-22 |
-| S2 | Ingest: transactions, hashing, idempotency | — |
+| S2 | Ingest: transactions, hashing, idempotency | ✅ 2026-10-22 |
 | S3 | Vector search in SQL | — |
 | S4 | APIs and HTTP | — |
 | S5 | What makes a good test question | — |
@@ -108,4 +108,68 @@ deletes it. Tests never touch your real data, and every run starts from the same
    row-level security, so one company could see another's chunks.
 3. Every embedding from `mistral-embed` has exactly 1,024 numbers; a fixed size lets the index work and makes the
    database reject a vector from the wrong model (e.g. 1,536 from OpenAI) instead of silently mixing them.
+</details>
+
+---
+
+## S2 — Ingest: filling the database (ISS-021)
+
+**Ingest** = load → chunk → embed → store, **once**, so questions only embed the question.
+Command: `uv run python -m app.ingest`. Real runs on the 11 documents:
+
+| Run | Result | Time | Mistral calls |
+|-----|--------|-----:|---------------|
+| 1st | `added 11 · updated 0 · unchanged 0 · removed 0` | 9.6 s | all 23 chunks embedded |
+| 2nd | `added 0 · updated 0 · unchanged 11 · removed 0` | 0.7 s | **none** |
+
+### Fingerprints (hashing)
+
+A **content hash** (SHA-256) turns a file's bytes into a 64-character fingerprint, e.g. `c199c3e2617b…` for the leave
+policy. Change a single letter and the fingerprint is completely different. We store it in `documents.content_hash`; on the
+next run, **same fingerprint → skip** (no model call, no cost), different → re-process only that document.
+
+### Transactions: all or nothing
+
+Updating a document is three steps: update its row, delete its old chunks, insert the new ones. If the program died
+between steps 2 and 3, the document would vanish from search. `with conn.transaction():` makes the database apply **all
+three or none**: any error rolls everything back.
+
+Proven by `test_a_failed_document_keeps_its_previous_version`: a fake model returns 3 numbers instead of 1,024, the
+database rejects the new chunks half-way through, and the old fingerprint and chunks are still there. The other 10 documents
+still go in, because each document has **its own** transaction (one bad file doesn't stop the rest).
+
+Design choice: **embed before opening the transaction.** A transaction holds locks; a slow network call shouldn't.
+
+### Idempotency: safe to run again
+
+Running ingest twice gives the same result as once: no duplicates, no cost (proven: the 2nd run embedded **nothing**, and
+the chunk rows are untouched). So you never need to remember whether you already ran it.
+
+### What each situation does
+
+| The file… | Ingest does | Report |
+|-----------|-------------|--------|
+| is new | insert document + chunks (version 1) | `added` |
+| changed | in one transaction: update document (version + 1), replace its chunks | `updated` |
+| is unchanged | nothing | `unchanged` |
+| was deleted | delete the document; `ON DELETE CASCADE` removes its chunks | `removed` |
+| fails | its transaction rolls back; the old version stays | `failed` (exit code 1) |
+
+### Testing lesson
+
+One test failed at first because **the test** guessed that the org chart has 1 chunk; it has 2. The fix was to *measure*
+the count in the test instead of hard-coding a guess.
+
+### Check questions
+
+1. Why is embedding done *before* the transaction starts, not inside it?
+2. If all 11 documents shared one transaction, what would happen when one of them fails?
+3. You fix a typo in `expense-policy.md` and run ingest. Exactly which Mistral calls happen?
+
+<details><summary>Answers</summary>
+
+1. A transaction holds locks on the rows it changes; a slow or failing network call inside it would keep them locked
+   (blocking searches) for no reason. Doing the slow work first keeps the transaction short.
+2. Everything would roll back, so none of the 11 would be saved, even the 10 good ones. Per-document transactions isolate failures.
+3. Only the expense policy's chunks (2) are embedded: its fingerprint changed; the other 10 match and are skipped.
 </details>
