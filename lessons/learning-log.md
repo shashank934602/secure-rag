@@ -320,3 +320,19 @@ loaded this log automatically, so the rule survived the new session.
 **Next session starts with:** fill the five blanks until `uv run pytest -m db tests/test_pg_search.py -v` shows 14 passed.
 
 **Question asked — "why aren't we using a vector DB?" (2026-10-22):** we are: pgvector makes Postgres one. We chose not to add a *dedicated* vector DB (ADR-0001) because security needs vectors, documents, and permissions in one place, with one transaction and database-enforced isolation; pgvector is fast enough at our scale. The comparison was added to `lessons/02-databases-and-apis.md`.
+
+---
+
+## 2026-10-23 — Picking up: S3 exercise, blank by blank
+
+**Where we are:** Phase 2. S1 (database) and S2 (ingest) are done. S3 (ISS-022) is in progress: `_SEARCH_SQL` is still empty, and the learner is filling it blank by blank in chat (⑤ and ② first). Docker Desktop is not running today. The repo is clean and in sync.
+
+**What we learned:** nothing new yet. Yesterday ended with a worked example for blanks ⑤ and ②.
+
+**How we learned it:** —
+
+**What I can now explain:** pending (answers for blanks ⑤ and ②).
+
+**Still unclear / open questions:** how to work through the exercise in chat. Answer: type each blank's answer as a message.
+
+**Next session starts with:** answers for ⑤ and ②, then ①, ③, ④; paste the query into the file; run the 14 tests (start Docker first).
