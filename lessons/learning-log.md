@@ -336,3 +336,24 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** how to work through the exercise in chat. Answer: type each blank's answer as a message.
 
 **Next session starts with:** answers for ⑤ and ②, then ①, ③, ④; paste the query into the file; run the 14 tests (start Docker first).
+
+**Update (later on 2026-10-23): the query explained**
+- The learner didn't know the blanks and asked for an explanation. Walked through the query in the order the database runs it: JOIN (match a chunk to its document by `document_id`), WHERE (same tenant, active, shares a role: the security part), ORDER BY distance `<=>` (closest first, so the HNSW index is used), LIMIT k, then SELECT with score = 1 − distance (real numbers: distance 0.150 → score 0.850).
+- The full query was shown; the learner is to **type** it into `_SEARCH_SQL`.
+- Check question asked: why are 0.850 (Phase 1) and 0.150 (`<=>`) both correct for the same chunk?
+
+---
+
+## 2026-10-26 — Picking up: type the query in
+
+**Where we are:** Phase 2, S3 (ISS-022). The query was explained on 2026-10-23, but `_SEARCH_SQL` is still empty. Docker Desktop is not running. The repo is clean and in sync.
+
+**What we learned:** nothing new yet. The session started with "where are we now".
+
+**How we learned it:** —
+
+**What I can now explain:** pending (check question: 0.850 vs 0.150).
+
+**Still unclear / open questions:** none raised.
+
+**Next session starts with:** type the query into `app/retrieval/pg_search.py`, start Docker, run `uv run pytest -m db tests/test_pg_search.py -v` (14 tests).
