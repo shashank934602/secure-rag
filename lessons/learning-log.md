@@ -357,3 +357,23 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** none raised.
 
 **Next session starts with:** type the query into `app/retrieval/pg_search.py`, start Docker, run `uv run pytest -m db tests/test_pg_search.py -v` (14 tests).
+
+---
+
+## 2026-10-28 — Question: what does production take?
+
+**Where we are:** Phase 2, S3 (ISS-022): `_SEARCH_SQL` is still empty, waiting for the learner to type it in. The repo is clean and in sync.
+
+**What we learned:**
+- **Production** = it runs on a server you don't sit at, real people use it, and it keeps working, or **fails safely**, when nobody is watching.
+- Three layers stand between us and production. (1) Finish the safety phases 3–7: better search, login and per-company isolation, guards, audit trail, eval gate. (2) Production prep, stages A–E: server and HTTPS, secrets, monitoring and alerts, CI/CD, load and failure tests, backups with a tested restore. (3) Running it: SLOs, on-call, key rotation, feedback loop.
+- "Ready" is decided by **10 measurable gates** (G1–G10 in `docs/production-plan.md`), not by feel. Examples: 0 cross-tenant leaks, ≥ 95 % injection block rate, a restore drill passed in the last 30 days.
+- Some production habits are already in place: secrets out of git, the non-superuser `rag_app`, versioned migrations, a pinned image, transactions, tests.
+
+**How we learned it:** reviewed `docs/production-plan.md` against what's actually built.
+
+**What I can now explain:** pending.
+
+**Still unclear / open questions:** D-P3, the hosting budget (the < $20 covers AI only), is still undecided (ISS-016). It's not needed until after Phase 7.
+
+**Next session starts with:** type the S3 query into `app/retrieval/pg_search.py` and run the 14 tests.
