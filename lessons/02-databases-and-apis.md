@@ -9,7 +9,7 @@
 | S2 | Ingest: transactions, hashing, idempotency | ✅ 2026-10-22 |
 | S3 | Vector search in SQL | ✅ 2026-10-29 |
 | S4 | APIs and HTTP | ✅ 2026-10-29 |
-| S5 | What makes a good test question | — |
+| S5 | What makes a good test question | ✅ 2026-10-29 |
 | S6 | Metrics: recall@5, MRR, key facts | — |
 | S7 | Baselines | — |
 
@@ -374,3 +374,41 @@ curl -X POST 127.0.0.1:8000/v1/ask -H 'Content-Type: application/json' -d '{"que
 1. Why is "I don't know" a 200 and not an error code?
 2. Why doesn't the 503 response include the real error message?
 3. Why did `/healthz` say OK while `/v1/ask` was failing, and how does the pool fix it?
+
+---
+
+## S5 — A better test set (ISS-024)
+
+The **golden set** (`eval/datasets/golden.jsonl`) grew from 10 to **20** questions: **14 answerable** (4 need two documents)
+and **6 unanswerable**. In S6/S7 we score the system on it, so the score is only as good as these questions.
+
+### What makes a good test question
+
+| Kind | Example | What it tests |
+|------|---------|---------------|
+| Simple fact | g12 "speed limit in our depot yards?" → 5 mph | search + reading |
+| Personal situation | g11 "I've worked here 3 years: how much sick pay?" → 6 weeks | applying a rule (1–5 years row) |
+| Two documents | g17 gift → rule in the handbook, person in the org chart | combining sources |
+| Comparison | g16 "pay SwiftParts or TrackLine sooner?" → TrackLine, 30 vs 45 days | reasoning over two facts |
+| **Near-miss** | g18 "motorway speed limit?" (only the 5 mph *yard* limit exists) | not inventing from general knowledge |
+| **Near-miss** | g19 "Leeds depot address?" (only Felixstowe's is given) | not stretching a similar fact |
+| Out of scope | g20 "employee of the year 2025?" | saying "I don't know" |
+
+### Key facts
+
+Each answerable question lists **key facts**: short phrases a correct answer must contain (g13: `24 hours`, `SafeSite`).
+Code can then check answers automatically, without a person reading every one; S6's score is the share of key facts found.
+
+### Testing the tests
+
+`uv run python -m scripts.check_golden` proves every key fact is really on one of its expected pages, every source page
+exists, ids are unique, unanswerable entries expect exactly the No-Answer sentence, and the counts are 14 / 6.
+A typo in a test ("26 days") would otherwise make a correct answer look wrong; a test catches that too.
+
+### Preview on the real system (2026-10-29)
+
+New questions g11–g20: **9/10 behave correctly**. g17 fails the same way as g06: the org chart isn't in the top 5, so
+"I don't know" is the honest reply. It's kept as a second test case for better search (ISS-017, Phase 3).
+
+Also seen: the model writes `5 mph` (an invisible *narrow* space), `555‑0150` (a non-breaking hyphen), and `**bold**`.
+S6's key-fact matching must treat these as the plain text.

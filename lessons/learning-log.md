@@ -425,3 +425,11 @@ loaded this log automatically, so the rule survived the new session.
 - Added a start-up checklist and a "you see / meaning / fix" table to the S4 notes. Note: a running server keeps the terminal busy on purpose.
 - Lesson: an error message should say **what to do**, not just what broke.
 - **The learner started the API themselves:** Docker Desktop showed `db-1` running on 5433, and `uv run uvicorn app.main:app` printed `Uvicorn running on http://127.0.0.1:8000`. Opening `/` gave `404 Not Found`, which is correct because there's no front page; the questions page is `/docs`. Learned: the database port (5433) and the web API port (8000) are different programs; 404 = "no such address here".
+
+**Update — S5 golden set done (2026-10-29, ISS-024):**
+- 20 test questions (14 answerable, including 4 two-document; 6 unanswerable, including 4 near-misses), each answerable one with **key facts**.
+- **Testing the tests:** a checker proves every key fact is on its source page, so a typo can't make a right answer look wrong.
+- Real preview of the 10 new questions: 9/10 correct. g17 is the org-chart retrieval miss again, which strengthens ISS-017 for Phase 3.
+- Seen in real answers: narrow spaces (`5\u202fmph`), non-breaking hyphens, and `**bold**`. S6's matching must normalise them.
+
+**Next session starts with:** S6, eval metrics (recall@5, MRR, key-fact score, No-Answer accuracy, latency).
