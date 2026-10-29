@@ -384,12 +384,16 @@ loaded this log automatically, so the rule survived the new session.
 
 **Where we are:** Phase 2, S3 (ISS-022): `_SEARCH_SQL` is still empty (unchanged since 2026-10-22). Docker Desktop is not running. The repo is clean and in sync.
 
-**What we learned:** nothing new yet. The session started with "where are we now?".
+**What we learned (system map):** the learner asked for concepts only: what happens, and where.
+- **Four places:** Python on the Mac (our logic), the Docker database on the Mac (chunks and vectors), Mistral's servers (text → 1,024 numbers), and Groq's servers (the LLM writes the answer).
+- **What leaves the machine:** document text goes to Mistral at ingest; the question goes to Mistral, and the question plus 5 chunks go to Groq, on every question. That's a privacy decision for real data (D-P6).
+- **Journey A (ingest, A1–A5)** and **Journey B (question, B1–B7)**, each step with its concept, file, place, and a real example.
+- **The gap S3 closes:** the database is filled, but questions still search an in-memory copy that re-embeds all 23 chunks per question. With the S3 query, only 1 text (the question) is embedded.
 
-**How we learned it:** —
+**How we learned it:** a concept map, saved as `lessons/system-map.md`.
 
-**What I can now explain:** pending (check question: 0.850 vs 0.150).
+**What I can now explain:** pending (two check questions in the map).
 
-**Still unclear / open questions:** the exercise has been waiting for a week. Offered an easier route: the learner types the query in chat, and the assistant places it in the file and runs the tests.
+**Still unclear / open questions:** whether the learner still wants to write core code (the S3 query), or prefers the assistant to write it and the learner to explain it back. Asked.
 
-**Next session starts with:** the learner's typed query (in the file or in chat), then run the 14 tests.
+**Next session starts with:** the learner's choice on S3, then continue.
