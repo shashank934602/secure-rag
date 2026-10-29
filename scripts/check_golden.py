@@ -8,21 +8,15 @@ its expected pages; unanswerable entries expect exactly the No-Answer sentence; 
 """
 
 import json
-import re
 import sys
 from pathlib import Path
 
 from app.answering.answer import NO_ANSWER
 from app.config import ROOT
 from app.ingestion.loaders import load_pages
+from eval.metrics import normalise
 
 ANSWERABLE, UNANSWERABLE = 14, 6
-
-
-def normalise(text: str) -> str:
-    """Lowercase, drop Markdown bold markers, and collapse all whitespace to single spaces."""
-    text = text.replace("*", "").replace(" ", " ").replace(" ", " ")
-    return re.sub(r"\s+", " ", text).strip().lower()
 
 
 def check(dataset: Path, corpus: Path) -> list[str]:
