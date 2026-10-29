@@ -6,6 +6,7 @@ Needs Docker:   uv run pytest -m db
 from collections.abc import Iterator
 from pathlib import Path
 
+import psycopg
 import pytest
 
 from app.answering.answer import build_db_answerer
@@ -62,3 +63,21 @@ def test_only_the_question_is_embedded(settings: Settings) -> None:
 def test_needs_a_database_url(settings: Settings) -> None:
     with pytest.raises(ValueError, match="DATABASE_URL"):
         build_db_answerer(settings.model_copy(update={"database_url": ""}))
+
+
+def test_recovers_after_the_database_drops_its_connections(settings: Settings, pg: PgUrls) -> None:
+    # A database restart kills every open connection. The answerer must get a fresh one on the
+    # next question instead of failing forever (found by stopping the dev database, ISS-027).
+    answerer = build_db_answerer(
+        settings,
+        embeddings=CountingEmbeddings(),
+        chat_model=ScriptedChatModel(responses=["25 days [leave-policy:1]."] * 2),
+    )
+    answerer.answer(QUESTION)
+    with psycopg.connect(pg.admin, autocommit=True) as admin:
+        admin.execute(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE application_name = 'rag-answerer'"
+        )
+
+    assert answerer.answer(QUESTION).status == "answered"

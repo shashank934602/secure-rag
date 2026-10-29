@@ -10,7 +10,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.answering.citations import all_citations_retrieved, parse_citations
 from app.config import Settings
-from app.db import connect
+from app.db import make_pool
 from app.domain import AnswerResult, ScoredChunk
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
@@ -106,7 +106,7 @@ def build_db_answerer(
     if not settings.database_url:
         raise ValueError("DATABASE_URL is not set (see .env.example)")
     retriever = PgRetriever(
-        connect(settings.database_url, autocommit=True),
+        make_pool(settings.database_url, name="rag-answerer"),
         embeddings or make_embeddings(settings.embedding_model),
         tenant=settings.tenant,
         roles=settings.roles,

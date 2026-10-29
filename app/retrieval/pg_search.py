@@ -1,28 +1,21 @@
 """Vector search in Postgres (spec 02 step 4, ISS-022).
 
-✍️  EXERCISE (S3): write the SQL query in `_SEARCH_SQL` below, then run:
-
-        uv run pytest -m db tests/test_pg_search.py -v
-
-    Your query receives four named values (never paste values into SQL text):
-        %(embedding)s   the question's 1,024 numbers
-        %(tenant_id)s   the company whose chunks may be returned
-        %(roles)s       the asking user's roles, e.g. ['employee']
-        %(k)s           how many chunks to return
-
-    It must return one row per chunk, with these six columns in this order:
-        slug, source, page, chunk_index, content, score
-
-    Rules (each one is a test):
-        1. Only chunks of that tenant, that are active, and that share a role with %(roles)s.
-        2. The closest chunks first, at most %(k)s of them.
-        3. score = cosine SIMILARITY (1 = same meaning), but `<=>` gives cosine DISTANCE.
-        4. Order by the distance itself (not the score), so Postgres can use the HNSW index.
+The query receives four named values (never pasted into the SQL text): %(embedding)s the
+question's 1,024 numbers, %(tenant_id)s, %(roles)s the asking user's roles, and %(k)s.
+Rules, each one a test in tests/test_pg_search.py:
+    1. Only chunks of that tenant, that are active, and that share a role with %(roles)s.
+    2. The closest chunks first, at most %(k)s of them.
+    3. score = cosine similarity (1 = same meaning) = 1 - the cosine distance from `<=>`.
+    4. Order by the distance itself (not the score), so Postgres can use the HNSW index.
 """
+
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 import numpy as np
 import psycopg
 from langchain_core.embeddings import Embeddings
+from psycopg_pool import ConnectionPool
 
 from app.domain import Chunk, ScoredChunk
 
@@ -45,33 +38,39 @@ class PgRetriever:
 
     def __init__(
         self,
-        conn: psycopg.Connection,
+        db: psycopg.Connection | ConnectionPool,
         embeddings: Embeddings,
         *,
         tenant: str,
         roles: list[str],
     ) -> None:
-        row = conn.execute("SELECT id FROM tenants WHERE name = %s", (tenant,)).fetchone()
+        self._db = db  # one connection (tests, CLI) or a pool (the API)
+        self._embeddings = embeddings
+        self._roles = roles
+        with self._connection() as conn:
+            row = conn.execute("SELECT id FROM tenants WHERE name = %s", (tenant,)).fetchone()
         if row is None:
             raise ValueError(f"Tenant {tenant!r} not found")
-        self._conn = conn
-        self._embeddings = embeddings
         self._tenant_id = row[0]
-        self._roles = roles
+
+    @contextmanager
+    def _connection(self) -> Iterator[psycopg.Connection]:
+        if isinstance(self._db, ConnectionPool):
+            with self._db.connection() as conn:  # checked alive, returned to the pool after
+                yield conn
+        else:
+            yield self._db
 
     def search(self, question: str, k: int) -> list[ScoredChunk]:
-        if "SELECT" not in _SEARCH_SQL.upper():
-            raise NotImplementedError("Write _SEARCH_SQL in app/retrieval/pg_search.py (S3)")
-        rows = self._conn.execute(
-            _SEARCH_SQL,
-            {
-                # a numpy array is sent as a pgvector `vector`; a plain list would be an array
-                "embedding": np.array(self._embeddings.embed_query(question)),
-                "tenant_id": self._tenant_id,
-                "roles": self._roles,
-                "k": k,
-            },
-        ).fetchall()
+        params = {
+            # a numpy array is sent as a pgvector `vector`; a plain list would be an array
+            "embedding": np.array(self._embeddings.embed_query(question)),
+            "tenant_id": self._tenant_id,
+            "roles": self._roles,
+            "k": k,
+        }
+        with self._connection() as conn:
+            rows = conn.execute(_SEARCH_SQL, params).fetchall()
         return [
             ScoredChunk(
                 chunk=Chunk(
