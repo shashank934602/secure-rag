@@ -342,6 +342,23 @@ and asks again. Real result after the fix: restart the database → the next req
 Lessons: test failure, not just success (stop the database and see what happens); and a health check that tests something
 *different* from the real path can say "OK" while users get errors.
 
+### How to start it (checklist)
+
+1. **Docker Desktop is open** (whale icon in the menu bar, not animating).
+2. **You're in the project folder**: `cd ~/Desktop/shashank/generative-ai/secure-rag-assistant`
+3. **The database is up**: `docker compose up -d`, then `docker compose ps` shows `(healthy)`.
+4. **Start the server**: `uv run uvicorn app.main:app --host 127.0.0.1 --port 8000`
+5. When it prints `Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)`, **it's running**. The terminal stays
+   busy on purpose: the server waits for requests. Leave it open, and use a browser or a second terminal.
+6. Stop it with **Ctrl+C** in that terminal.
+
+| You see | Meaning | Fix |
+|---------|---------|-----|
+| `Cannot reach the database at 127.0.0.1:5433. Is Docker running?` | the database isn't up | steps 1 and 3 |
+| `Failed to spawn: uvicorn` | wrong folder | step 2 |
+| `address already in use` | a server is already running on 8000 | use it, or stop it (Ctrl+C in its terminal) |
+| the terminal "just sits there" | it's working (step 5) | open http://127.0.0.1:8000/docs |
+
 ### Try it yourself
 
 ```bash

@@ -17,6 +17,10 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 - Docker image pinned to `pgvector/pgvector:0.8.7-pg16` (was the floating `pg16` tag) in Compose and the test fixture, so every machine gets the same database version.
 
+### Fixed
+
+- Starting the API with the database down now fails within about 5 s with a clear message ("Is Docker running? … docker compose up -d") instead of retrying forever (ISS-028).
+
 ### Added
 
 - Web API `app/main.py`: `POST /v1/ask` (validated 1–1,000 chars, 422; generic 503 on failure; `request_id`) and `GET /healthz`; listens on 127.0.0.1 only; deps `fastapi`, `uvicorn`, dev `httpx` (ISS-023).

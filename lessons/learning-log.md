@@ -418,3 +418,9 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** explain-back questions for S3 and S4 (pending, for later study).
 
 **Next session starts with:** S5, golden set to 20 questions with key facts (ISS-024).
+
+**Update — "it's not starting" (2026-10-29, ISS-028):**
+- On the assistant's machine the server started fine. Reproduced the two likely causes: with the database down, the server retried forever with `connection refused` and no hint; from the wrong folder, `Failed to spawn: uvicorn`.
+- Fixed the first: start-up now fails within about 5 s with "Cannot reach the database … Is Docker running? … docker compose up -d".
+- Added a start-up checklist and a "you see / meaning / fix" table to the S4 notes. Note: a running server keeps the terminal busy on purpose.
+- Lesson: an error message should say **what to do**, not just what broke.
