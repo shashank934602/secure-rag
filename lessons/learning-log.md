@@ -377,3 +377,19 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** D-P3, the hosting budget (the < $20 covers AI only), is still undecided (ISS-016). It's not needed until after Phase 7.
 
 **Next session starts with:** type the S3 query into `app/retrieval/pg_search.py` and run the 14 tests.
+
+---
+
+## 2026-10-29 — Picking up: status check
+
+**Where we are:** Phase 2, S3 (ISS-022): `_SEARCH_SQL` is still empty (unchanged since 2026-10-22). Docker Desktop is not running. The repo is clean and in sync.
+
+**What we learned:** nothing new yet. The session started with "where are we now?".
+
+**How we learned it:** —
+
+**What I can now explain:** pending (check question: 0.850 vs 0.150).
+
+**Still unclear / open questions:** the exercise has been waiting for a week. Offered an easier route: the learner types the query in chat, and the assistant places it in the file and runs the tests.
+
+**Next session starts with:** the learner's typed query (in the file or in chat), then run the 14 tests.
