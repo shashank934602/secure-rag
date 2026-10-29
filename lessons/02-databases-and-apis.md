@@ -8,7 +8,7 @@
 | S1 | Databases, Docker, migrations, least privilege | ✅ 2026-10-22 |
 | S2 | Ingest: transactions, hashing, idempotency | ✅ 2026-10-22 |
 | S3 | Vector search in SQL | ✅ 2026-10-29 |
-| S4 | APIs and HTTP | — |
+| S4 | APIs and HTTP | ✅ 2026-10-29 |
 | S5 | What makes a good test question | — |
 | S6 | Metrics: recall@5, MRR, key facts | — |
 | S7 | Baselines | — |
@@ -290,3 +290,70 @@ Identical scores show the two searches agree (the `test_same_results_as_the_in_m
 1. In your own words, what does each of the five parts do: JOIN, WHERE, ORDER BY, LIMIT, `1 - (… <=> …)`?
 2. Which line is the *security* part, and what would leak if it were deleted?
 3. Why did the database version send 1 text to Mistral instead of 24?
+
+---
+
+## S4 — The web API (ISS-023)
+
+Built at pace (the learner chose "build now, study later"), so study this section afterwards.
+
+### The ideas
+
+- **API** (Application Programming Interface): a door that lets *other programs* use ours: a website, a phone app, a Slack bot.
+- **HTTP**: the language of that door. A program sends a **request** (a *method* such as `GET` or `POST`, a *path* such as
+  `/v1/ask`, and a *body* in **JSON**) and gets a **response**: a **status code** plus a JSON body.
+- **Status codes** say what happened, so the caller knows what to do next:
+
+| Code | Means | When we send it |
+|------|-------|-----------------|
+| 200 | OK | answered, **or** "I don't know" (a correct outcome, not an error) |
+| 422 | your input is invalid | missing, empty, only spaces, over 1,000 characters, not text |
+| 503 | temporarily unavailable, try again | model, embedding, or database failure |
+
+- **Validation at the door**: the `AskRequest` model rejects bad input *before* any AI call, which costs nothing and gives a clear error.
+- **Never leak internals**: a 503 says only "temporarily unavailable". Real error text can contain keys or internal paths
+  (a test uses `api_key=sk-secret-123` inside an error to prove it never reaches the caller).
+- **Logs without secrets** (Invariant 5): the server logs the *type* of failure and a `request_id`, never the question.
+  Real check: 0 question words in the server log.
+- **request_id**: a unique id per request, so a user can report "request 8893…" and we can find it (the audit trail uses it from Phase 6).
+- **127.0.0.1 only**: no login until Phase 4, so the API listens only on this Mac. Real check: `listening on 127.0.0.1:8000`.
+- **Build once at start-up**: the answerer (database pool + models) is created when the server starts, not per request.
+
+### Real runs (2026-10-29)
+
+```
+GET  /healthz                               → 200 {"status":"ok"}
+POST /v1/ask "How many days of annual leave…" → 200, answer + citation annual-leave-policy:1 (2.7 s)
+POST /v1/ask "What is the CEO salary?"      → 200, status "no_answer"
+POST /v1/ask "   "                          → 422
+database stopped: /healthz                  → 503 {"status":"unavailable"}
+database stopped: /v1/ask                   → 503 {"detail":"The assistant is temporarily unavailable. Try again."}
+```
+
+### A real bug found by breaking things on purpose (ISS-027)
+
+After a database **restart**, `/healthz` said OK (it opens a fresh connection each time), but `/v1/ask` failed **forever**: it
+held the one connection opened at start-up, and the restart had killed it. In production, that's an outage that looks healthy.
+
+Fix: a **connection pool** (`app/db.py` → `make_pool`). A few connections are kept ready, and each is **checked before use**
+and replaced if dead; concurrent requests also stop sharing one connection. A regression test kills the app's connections
+and asks again. Real result after the fix: restart the database → the next request returns 200.
+
+Lessons: test failure, not just success (stop the database and see what happens); and a health check that tests something
+*different* from the real path can say "OK" while users get errors.
+
+### Try it yourself
+
+```bash
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+# in another terminal:
+curl 127.0.0.1:8000/healthz
+curl -X POST 127.0.0.1:8000/v1/ask -H 'Content-Type: application/json' -d '{"question": "How much leave do I get?"}'
+# or open http://127.0.0.1:8000/docs in a browser: FastAPI's interactive page
+```
+
+### Explain it back (later)
+
+1. Why is "I don't know" a 200 and not an error code?
+2. Why doesn't the 503 response include the real error message?
+3. Why did `/healthz` say OK while `/v1/ask` was failing, and how does the pool fix it?

@@ -408,3 +408,13 @@ loaded this log automatically, so the rule survived the new session.
 **What I can now explain:** pending (three explain-back questions in `lessons/02-databases-and-apis.md`, S3 result).
 
 **Next session starts with:** the three explain-back questions, then S4: the web API (`POST /v1/ask`).
+
+**Update — pace changed; S4 web API done (2026-10-29, ISS-023, ISS-027):**
+- The learner said the project is getting delayed: **build now, study later**. From here, the assistant builds each slice end to end with a short intro; the depth goes into `lessons/02-databases-and-apis.md` for later study.
+- S4 built: `POST /v1/ask`, `GET /healthz`. Real curl runs: 200 with answer and citation, 200 "no_answer", 422 for an empty question, 503 with the database stopped. 0 question words in the server log; it listens on 127.0.0.1 only.
+- **A real bug found by breaking things on purpose:** after a database restart, `/healthz` said OK but `/v1/ask` failed forever, because it held a dead start-up connection. Fixed with a connection pool that checks each connection before use. Regression test added; real recovery confirmed.
+- Lessons (to study): status codes 200/422/503; never leak internal errors; a health check must test the same path users use.
+
+**Still unclear / open questions:** explain-back questions for S3 and S4 (pending, for later study).
+
+**Next session starts with:** S5, golden set to 20 questions with key facts (ISS-024).

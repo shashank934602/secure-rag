@@ -61,5 +61,5 @@ Rules:
 - Run from this folder. Python 3.12 via `uv`; deps in `pyproject.toml`.
 - Install / sync: `uv sync`. Add a dep: `uv add <pkg>` (dev: `uv add --dev <pkg>`).
 - Tests: `uv run pytest` (offline, no Docker). Database tests: `uv run pytest -m db` (needs Docker). Real models: `uv run pytest -m live`. Lint: `uv run ruff check .`
-- Database (Docker Desktop must be running): `docker compose up -d` → `uv run alembic -c db/alembic.ini upgrade head`. Load documents: `uv run python -m app.ingest` (safe to re-run). The CLI then answers from the database; `DATABASE_URL= uv run python -m app.cli …` forces the in-memory index. Stop: `docker compose down` (data kept). Inspect: `docker compose exec db psql -U postgres -d rag`.
+- Database (Docker Desktop must be running): `docker compose up -d` → `uv run alembic -c db/alembic.ini upgrade head`. Load documents: `uv run python -m app.ingest` (safe to re-run). The CLI then answers from the database; `DATABASE_URL= uv run python -m app.cli …` forces the in-memory index. API: `uv run uvicorn app.main:app --host 127.0.0.1 --port 8000` (never bind 0.0.0.0 before auth, Phase 4). Stop: `docker compose down` (data kept). Inspect: `docker compose exec db psql -U postgres -d rag`.
 - Never connect the app as the admin; it uses `DATABASE_URL` (the `rag_app` role).

@@ -19,6 +19,8 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Web API `app/main.py`: `POST /v1/ask` (validated 1–1,000 chars, 422; generic 503 on failure; `request_id`) and `GET /healthz`; listens on 127.0.0.1 only; deps `fastapi`, `uvicorn`, dev `httpx` (ISS-023).
+- Connection pool `make_pool` (psycopg-pool) checks connections before use, so the API recovers after a database restart (ISS-027).
 - Postgres search `PgRetriever` (tenant, active, and role filters; HNSW cosine order) and `build_db_answerer`; the CLI answers from the database when `DATABASE_URL` is set, embedding only the question (ISS-022).
 - Ingest command `python -m app.ingest`: fingerprints skip unchanged documents, one transaction per document, removed files deleted, failures rolled back and reported (ISS-021).
 - Local Postgres + pgvector in Docker (`docker-compose.yml`, port 5433) and Alembic raw-SQL migrations in `db/`: tenants, users, documents, chunks with `vector(1024)` and an HNSW cosine index; seed tenant; non-superuser `rag_app` role (ISS-020).
