@@ -10,7 +10,7 @@
 | S3 | Vector search in SQL | ✅ 2026-10-29 |
 | S4 | APIs and HTTP | ✅ 2026-10-29 |
 | S5 | What makes a good test question | ✅ 2026-10-29 |
-| S6 | Metrics: recall@5, MRR, key facts | — |
+| S6 | Metrics: recall@5, MRR, key facts | ✅ 2026-10-29 |
 | S7 | Baselines | — |
 
 ---
@@ -412,3 +412,63 @@ New questions g11–g20: **9/10 behave correctly**. g17 fails the same way as g0
 
 Also seen: the model writes `5 mph` (an invisible *narrow* space), `555‑0150` (a non-breaking hyphen), and `**bold**`.
 S6's key-fact matching must treat these as the plain text.
+
+---
+
+## S6 — Measuring quality (ISS-025)
+
+`eval/metrics.py`: pure functions (no AI, no database), each checked against hand-worked examples in `tests/test_metrics.py`.
+Written by the assistant (build now, study later); the learner explains them back later.
+
+### Retrieval: did search bring the right page?
+
+**recall@5** = share of the expected pages that appear in the top 5.
+- expected `[leave:1]`, top 5 has it → **1.0**
+- expected `[leave:1, org:1]`, only leave found → **0.5** (two chunks of one page still count once)
+- right page is 6th → **0.0**: the model never sees it.
+
+**Reciprocal rank** = 1 / position of the first right page; **MRR** = its average over the questions.
+
+| Right page at position | 1 | 2 | 4 | not found |
+|------------------------|---|---|---|-----------|
+| reciprocal rank | 1.0 | 0.5 | 0.25 | 0 |
+
+Recall asks *"is it there at all?"*; MRR asks *"is it near the top?"*. Both matter: Phase 3 will change the order (reranking).
+
+### Answers: is the answer right?
+
+**Key-fact score** = share of the key facts found in the answer. Before comparing, both texts are **normalised**:
+lowercase, `**bold**` removed, narrow and non-breaking spaces become plain spaces, special hyphens (`‑`) become `-`,
+and whitespace is collapsed. Without this, the real answer `**5 mph**` wouldn't match the key fact `5 mph`.
+A refused answerable question scores 0.
+
+Known limit: it's a substring check. `£4200` won't match `£4,200`, and a fact written in other words won't match.
+Phase 7 adds an AI judge for meaning.
+
+### Refusing: "I don't know" exactly when it should
+
+| Question | System said | Verdict |
+|----------|-------------|---------|
+| unanswerable | I don't know | ✅ correct |
+| unanswerable | an answer | ❌ invented |
+| answerable | an answer | ✅ |
+| answerable | I don't know | ❌ **false refusal** |
+
+**No-Answer accuracy** = share of unanswerable questions refused. **False refusals** = answerable questions refused.
+A system that always says "I don't know" scores 100% No-Answer accuracy and is useless, so we report both.
+
+### Speed: latency percentiles
+
+**p50** (median) = half the answers were faster. **p95** = 95% were faster: the "slow but normal" case users notice.
+Averages hide slow outliers; percentiles show them. Example: `[1, 2, 3, 4, 10]` s → p50 = 3 s, p95 = 8.8 s.
+
+### The summary
+
+`summarise(results)` gives: questions, recall@5, MRR, key-fact score, answered rate, false refusals, No-Answer accuracy,
+p50/p95 latency. S7 runs the 20 golden questions through the real API and saves these numbers as the **baseline**.
+
+### Explain it back (later)
+
+1. Search finds the right page in 5th place. What are recall@5 and the reciprocal rank?
+2. Why report false refusals alongside No-Answer accuracy?
+3. Why p95 and not just the average?

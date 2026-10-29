@@ -23,6 +23,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Eval metrics `eval/metrics.py`: recall@5, MRR, key-fact score (normalises real model spaces, hyphens, bold), No-Answer accuracy and false refusals, p50/p95 latency, `summarise` (ISS-025).
 - Golden set grown to 20 questions with `key_facts`; `scripts/check_golden.py` validates every key fact against its source page (ISS-024).
 - Web API `app/main.py`: `POST /v1/ask` (validated 1–1,000 chars, 422; generic 503 on failure; `request_id`) and `GET /healthz`; listens on 127.0.0.1 only; deps `fastapi`, `uvicorn`, dev `httpx` (ISS-023).
 - Connection pool `make_pool` (psycopg-pool) checks connections before use, so the API recovers after a database restart (ISS-027).

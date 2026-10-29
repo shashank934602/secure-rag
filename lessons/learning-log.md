@@ -433,3 +433,10 @@ loaded this log automatically, so the rule survived the new session.
 - Seen in real answers: narrow spaces (`5\u202fmph`), non-breaking hyphens, and `**bold**`. S6's matching must normalise them.
 
 **Next session starts with:** S6, eval metrics (recall@5, MRR, key-fact score, No-Answer accuracy, latency).
+
+**Update — S6 metrics done (2026-10-29, ISS-025):**
+- `eval/metrics.py`, written by the assistant (build now, study later): **recall@5** (is the right page in the top 5?), **MRR** (how high?), **key-fact score** (share of facts in the answer, after normalising real output), **No-Answer accuracy + false refusals** (refuse exactly when right), **p50/p95 latency** (typical vs slow-but-normal).
+- 22 tests with hand-worked numbers and real model replies; the golden checker now reuses the same `normalise`.
+- Known limit: key facts are substring matches (`£4200` ≠ `£4,200`); an AI judge comes in Phase 7.
+
+**Next session starts with:** S7, run the 20 questions through the API, save the baseline, release `v0.2.0`.
