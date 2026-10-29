@@ -4,13 +4,17 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 2 — Postgres, API, baseline eval** (`context/feature-specs/02-postgres-api-baseline.md`). Spec complete and sliced into S1–S7 (ISS-020 … ISS-026) on 2026-10-21. S1–S2 done (2026-10-22). S3 in progress: exercise set (14 tests in `tests/test_pg_search.py`, learner writes `_SEARCH_SQL`); `Retriever` protocol added, `Answerer` accepts any retriever (ISS-022). **Phase 1 is done: released `v0.1.0` on 2026-10-19.**
+**Phase 2 — Postgres, API, baseline eval** (`context/feature-specs/02-postgres-api-baseline.md`). Spec complete and sliced into S1–S7 (ISS-020 … ISS-026) on 2026-10-21. S1–S2 done (2026-10-22). S1–S3 done (2026-10-29): questions are answered from Postgres. Next: S4 web API (ISS-023). **Phase 1 is done: released `v0.1.0` on 2026-10-19.**
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 2 S3 — Postgres search** (2026-10-29, ISS-022)
+  - `PgRetriever` (`app/retrieval/pg_search.py`): one SQL query, filtered by tenant, `is_active`, and role overlap, ordered by `<=>` (HNSW), `score = 1 - distance`. Written by the assistant at the learner's request; the learner explains it back.
+  - `build_answerer(…, retriever=)`, `build_db_answerer(settings)`; `Settings.roles`; the CLI uses Postgres when `DATABASE_URL` is set, otherwise in memory.
+  - Tests: 46 offline, 37 db, 2 live. Real run: same top-5 scores as in memory; 1 embedding per question instead of 24; 5.1 s → 3.2 s.
 - **Phase 2 S2 — ingest** (2026-10-22, ISS-021)
   - `python -m app.ingest`: per-file SHA-256 fingerprint; unchanged → skipped; new/changed → chunk, embed (outside the transaction), then upsert document (version + 1) and replace its chunks in one transaction; removed files deleted (chunks cascade); failures rolled back and reported, exit 1.
   - `connect(url, autocommit=)`; `Settings.tenant`; test fake `CountingEmbeddings`.

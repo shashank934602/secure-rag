@@ -1,6 +1,6 @@
 # System map — what happens, and where it happens
 
-> A concept map of the whole system as it is built today (Phase 2, S1–S2 done; S3 in progress).
+> A concept map of the whole system as it is built today (Phase 2, S1–S3 done: questions are answered from the database).
 > For each step: the **idea**, the **file** that does it, the **place** it runs, and a **real example** from our data.
 
 ---
@@ -56,7 +56,7 @@ Runs **every time**. Command: `uv run python -m app.cli "How many days of annual
 |---|--------------|---------|-------------------------|-------|--------------|
 | B1 | read the question | — | `app/cli.py` → `main` | ① | 10 tokens |
 | B2 | turn the question into numbers | embeddings | the retriever calls Mistral | ③ | → 1,024 numbers |
-| B3 | find the 5 closest chunks | retrieval, similarity | **today:** `app/retrieval/search.py` → `ChunkIndex.search` (in memory). **After S3:** `app/retrieval/pg_search.py` → `PgRetriever.search` (SQL) | today ①, after S3 ② | best score 0.850 (leave policy) |
+| B3 | find the 5 closest chunks | retrieval, similarity | `app/retrieval/pg_search.py` → `PgRetriever.search` (SQL, since 2026-10-29); without `DATABASE_URL`: `app/retrieval/search.py` → `ChunkIndex.search` (in memory) | ② | best score 0.850 (leave policy) |
 | B4 | build the prompt: rules + chunks + question | prompt | `app/answering/answer.py` → `_user_message`, rules in `app/prompts/answer_v1.md` | ① | 134 + 1,394 tokens |
 | B5 | the LLM writes an answer | generation | `chat_model.invoke` in `app/answering/answer.py` | ④ | "25 days … [annual-leave-policy:1]" |
 | B6 | check the citations | distrust the output | `app/answering/citations.py` → `parse_citations`, `all_citations_retrieved` | ① | made-up source → "I don't know" |
@@ -64,7 +64,7 @@ Runs **every time**. Command: `uv run python -m app.cli "How many days of annual
 
 ---
 
-## The gap S3 closes
+## The gap S3 closed (done 2026-10-29: 24 texts → 1 per question, 5.1 s → 3.2 s)
 
 ```
 Journey A ──▶ [ database: 23 chunks + vectors ]        ← filled ✅

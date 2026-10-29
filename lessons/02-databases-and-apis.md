@@ -7,7 +7,7 @@
 |-------|---------|--------|
 | S1 | Databases, Docker, migrations, least privilege | ✅ 2026-10-22 |
 | S2 | Ingest: transactions, hashing, idempotency | ✅ 2026-10-22 |
-| S3 | Vector search in SQL | ✍️ exercise set 2026-10-22 |
+| S3 | Vector search in SQL | ✅ 2026-10-29 |
 | S4 | APIs and HTTP | — |
 | S5 | What makes a good test question | — |
 | S6 | Metrics: recall@5, MRR, key facts | — |
@@ -268,3 +268,25 @@ LIMIT ⑤_____
 
 Columns you can use: `chunks c`: `document_id, tenant_id, allowed_roles, page, chunk_index, content, embedding, is_active`;
 `documents d`: `id, slug, source`.
+
+### S3 result (2026-10-29)
+
+At the learner's request (2026-10-29, "Option A"), the assistant wrote the query; the learner explains it back.
+14/14 search tests pass. Then the app was connected: the CLI now searches Postgres whenever `DATABASE_URL` is set.
+
+Same real question, before and after:
+
+| | In memory (before) | Postgres (after) |
+|---|---|---|
+| Top 5 scores | 0.850, 0.842, 0.785, 0.759, 0.747 | **the same** |
+| Texts sent to Mistral per question | 24 (23 chunks + the question) | **1** (the question) |
+| Time (incl. the Groq answer) | 5.1 s | 3.2 s |
+| "What is the CEO's salary?" | No-Answer, best 0.692 | No-Answer, best 0.692 |
+
+Identical scores show the two searches agree (the `test_same_results_as_the_in_memory_search` test, proven on real data).
+
+### Explain it back (your turn)
+
+1. In your own words, what does each of the five parts do: JOIN, WHERE, ORDER BY, LIMIT, `1 - (… <=> …)`?
+2. Which line is the *security* part, and what would leak if it were deleted?
+3. Why did the database version send 1 text to Mistral instead of 24?

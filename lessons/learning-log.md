@@ -397,3 +397,14 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** whether the learner still wants to write core code (the S3 query), or prefers the assistant to write it and the learner to explain it back. Asked.
 
 **Next session starts with:** the learner's choice on S3, then continue.
+
+**Update — S3 done: answers now come from the database (2026-10-29, ISS-022):**
+- The learner asked to get moving, so we went with Option A: the assistant wrote the query and the learner explains it back.
+- 14/14 search tests pass, including security (another company's, inactive, and wrong-role chunks are never returned) and use of the HNSW index.
+- Connected to the app: the CLI answers from Postgres when `DATABASE_URL` is set.
+- Real comparison, same question: **identical top-5 scores** (0.850 …), **1 text to Mistral instead of 24**, **3.2 s instead of 5.1 s**. "CEO's salary" → "I don't know" (best 0.692).
+- Lesson: the database pays off because the expensive work (embedding the chunks) happens once at ingest, not on every question.
+
+**What I can now explain:** pending (three explain-back questions in `lessons/02-databases-and-apis.md`, S3 result).
+
+**Next session starts with:** the three explain-back questions, then S4: the web API (`POST /v1/ask`).
