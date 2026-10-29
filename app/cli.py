@@ -9,14 +9,14 @@ import argparse
 import sys
 from collections.abc import Callable
 
-from app.answering.answer import Answerer, build_answerer
+from app.answering.answer import Answerer, build_answerer, build_db_answerer
 from app.config import Settings, get_settings
 from app.domain import AnswerResult
 
 
 def main(
     argv: list[str] | None = None,
-    build: Callable[[Settings], Answerer] = build_answerer,
+    build: Callable[[Settings], Answerer] | None = None,
 ) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description=__doc__.split("\n")[0])
     parser.add_argument("question", help="the question to ask")
@@ -26,7 +26,9 @@ def main(
     args = parser.parse_args(argv)
 
     try:
-        result = build(get_settings()).answer(args.question)
+        settings = get_settings()
+        build = build or _default_build(settings)
+        result = build(settings).answer(args.question)
     except Exception as error:
         if args.debug:
             raise
@@ -35,6 +37,12 @@ def main(
 
     print(_format(result, debug=args.debug))
     return 0
+
+
+def _default_build(settings: Settings) -> Callable[[Settings], Answerer]:
+    """Search Postgres when a database is configured (run `python -m app.ingest` first);
+    otherwise fall back to the in-memory index over the corpus folder."""
+    return build_db_answerer if settings.database_url else build_answerer
 
 
 def _format(result: AnswerResult, *, debug: bool) -> str:

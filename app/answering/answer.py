@@ -10,10 +10,12 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.answering.citations import all_citations_retrieved, parse_citations
 from app.config import Settings
+from app.db import connect
 from app.domain import AnswerResult, ScoredChunk
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
 from app.retrieval.embeddings import make_embeddings
+from app.retrieval.pg_search import PgRetriever
 from app.retrieval.retriever import Retriever
 from app.retrieval.search import ChunkIndex
 
@@ -74,17 +76,39 @@ def build_answerer(
     *,
     embeddings: Embeddings | None = None,
     chat_model: BaseChatModel | None = None,
+    retriever: Retriever | None = None,
 ) -> Answerer:
-    """Load, chunk, and embed the corpus, and create the chat model named in settings."""
-    pages = load_pages(settings.corpus_dir)
-    chunks = chunk_pages(
-        pages,
-        chunk_size=settings.chunk_size,
-        chunk_overlap=settings.chunk_overlap,
-        encoding_name=settings.tokenizer_encoding,
-    )
-    index = ChunkIndex(chunks, embeddings or make_embeddings(settings.embedding_model))
+    """Create the answerer: the given retriever, or an in-memory index over the corpus
+    (loaded, chunked, and embedded on every start), plus the chat model named in settings."""
+    if retriever is None:
+        pages = load_pages(settings.corpus_dir)
+        chunks = chunk_pages(
+            pages,
+            chunk_size=settings.chunk_size,
+            chunk_overlap=settings.chunk_overlap,
+            encoding_name=settings.tokenizer_encoding,
+        )
+        retriever = ChunkIndex(chunks, embeddings or make_embeddings(settings.embedding_model))
     model = chat_model or init_chat_model(
         settings.chat_model, temperature=settings.chat_temperature
     )
-    return Answerer(index=index, chat_model=model, top_k=settings.top_k)
+    return Answerer(index=retriever, chat_model=model, top_k=settings.top_k)
+
+
+def build_db_answerer(
+    settings: Settings,
+    *,
+    embeddings: Embeddings | None = None,
+    chat_model: BaseChatModel | None = None,
+) -> Answerer:
+    """Create the answerer over Postgres: chunks were embedded once by `python -m app.ingest`,
+    so each question embeds only itself."""
+    if not settings.database_url:
+        raise ValueError("DATABASE_URL is not set (see .env.example)")
+    retriever = PgRetriever(
+        connect(settings.database_url, autocommit=True),
+        embeddings or make_embeddings(settings.embedding_model),
+        tenant=settings.tenant,
+        roles=settings.roles,
+    )
+    return build_answerer(settings, chat_model=chat_model, retriever=retriever)

@@ -159,3 +159,15 @@ def test_chat_model_provider_is_swapped_by_config_only(
 
     assert isinstance(built.chat_model, expected_class)
     assert built.chat_model.temperature == pytest.approx(0, abs=1e-6)  # Groq sends 0 as 1e-8
+
+
+def test_a_given_retriever_is_used_and_the_corpus_is_not_loaded(tmp_path) -> None:
+    # Any Retriever works (spec 02 D4); with one given, no corpus is read or embedded.
+    retriever = ChunkIndex(CHUNKS, KeywordEmbeddings(VOCAB))
+    settings = Settings(corpus_dir=tmp_path / "does-not-exist")
+
+    built = build_answerer(
+        settings, retriever=retriever, chat_model=ScriptedChatModel(responses=["x"])
+    )
+
+    assert built.index is retriever

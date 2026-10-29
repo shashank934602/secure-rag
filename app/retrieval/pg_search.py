@@ -26,8 +26,17 @@ from langchain_core.embeddings import Embeddings
 
 from app.domain import Chunk, ScoredChunk
 
+# Read it in the order the database runs it: JOIN → WHERE → ORDER BY → LIMIT → SELECT.
 _SEARCH_SQL = """
--- ✍️ your query here
+SELECT d.slug, d.source, c.page, c.chunk_index, c.content,
+       1 - (c.embedding <=> %(embedding)s) AS score      -- similarity = 1 - cosine distance
+FROM chunks c
+JOIN documents d ON d.id = c.document_id                  -- each chunk with its document
+WHERE c.tenant_id = %(tenant_id)s                         -- only this company's chunks,
+  AND c.is_active                                         -- only live ones,
+  AND c.allowed_roles && %(roles)s                        -- only ones the user's roles may see
+ORDER BY c.embedding <=> %(embedding)s                    -- closest first (uses the HNSW index)
+LIMIT %(k)s
 """
 
 

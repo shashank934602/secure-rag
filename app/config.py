@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     database_url: str = ""
     database_admin_url: str = ""
     tenant: str = "Aldermoor"  # the one seeded tenant until auth arrives (Phase 4)
+    roles: list[str] = ["employee"]  # the asking user's roles until auth arrives (Phase 4)
 
 
 @lru_cache
