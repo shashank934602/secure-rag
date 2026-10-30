@@ -440,3 +440,19 @@ loaded this log automatically, so the rule survived the new session.
 - Known limit: key facts are substring matches (`£4200` ≠ `£4,200`); an AI judge comes in Phase 7.
 
 **Next session starts with:** S7, run the 20 questions through the API, save the baseline, release `v0.2.0`.
+
+---
+
+## 2026-10-30 — S7 baseline, and a study companion for a second chat
+
+**Where we are:** Phase 2, S7 (ISS-026): the eval runner, the baseline, then `v0.2.0`. S1–S6 are done.
+
+**What we learned:** so far, nothing new. The learner wants to study in a second chat while the main chat builds.
+
+**How we learned it:** wrote `lessons/study-companion-context.md`, a context pack to paste into another chat. It holds tutor instructions (concepts first, one question at a time, don't change the repo, never print `.env`), project state, the system map, real numbers, incidents, a 10-item study agenda, and files to open.
+
+**What I can now explain:** pending. The second chat ends each session with a summary to paste back here.
+
+**Still unclear / open questions:** the study agenda items, which the second chat now covers.
+
+**Next session starts with:** finish S7 and release `v0.2.0`.
