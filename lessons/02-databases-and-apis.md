@@ -11,7 +11,7 @@
 | S4 | APIs and HTTP | ✅ 2026-10-29 |
 | S5 | What makes a good test question | ✅ 2026-10-29 |
 | S6 | Metrics: recall@5, MRR, key facts | ✅ 2026-10-29 |
-| S7 | Baselines | — |
+| S7 | Baselines | ✅ 2026-10-30 |
 
 ---
 
@@ -472,3 +472,37 @@ p50/p95 latency. S7 runs the 20 golden questions through the real API and saves 
 1. Search finds the right page in 5th place. What are recall@5 and the reciprocal rank?
 2. Why report false refusals alongside No-Answer accuracy?
 3. Why p95 and not just the average?
+
+---
+
+## S7 — The baseline (ISS-026)
+
+`uv run python -m eval.run --save-baseline` sends the 20 golden questions through the **real API** (in-process), with the
+real models and the database, scores them with S6's metrics, and saves the report as `eval/baselines/phase2.json`.
+
+**Baseline** = the scores of a fixed, committed version. Every later change is compared against it: a new idea is kept only
+if the numbers say it helped. Without one, "it seems better" is a guess.
+
+### Phase 2 baseline (2026-10-30)
+
+| Metric | Value | Reading |
+|--------|------:|---------|
+| recall@5 | 0.929 | the right page was in the top 5 for 13 of 14 answerable questions (g06 and g17 found only one of their two pages) |
+| MRR | 0.917 | when found, the right page was almost always first |
+| key-fact score | 0.857 | 12 answers had every key fact; the 2 refusals scored 0 |
+| answered | 12 / 14 | 2 **false refusals**: g06 and g17 both need the org chart, which search doesn't find (ISS-017) |
+| No-Answer accuracy | 6 / 6 | every trick and near-miss question got "I don't know" |
+| latency p50 / p95 | 9.5 s / 13.3 s | **misleading**: g01–g06 took ~1.4 s, then Groq's free tier slowed the burst to ~10 s (ISS-029) |
+
+### What it tells us to do next
+
+- The two failures are **retrieval** failures, not answer failures: recall@5 and the refusals point at the same cause.
+  Phase 3 (keyword + vector search, reranking) targets exactly this; success = g06 and g17 answered without losing the others.
+- Numbers come with context: the latency here measures the free tier's throttling as much as our system.
+  A baseline records its settings (models, prompt version, chunk size, top k, git commit) so a later run is a fair comparison.
+
+### Explain it back (later)
+
+1. Why are g06 and g17 "retrieval" failures, and which two numbers show it?
+2. Why must a report record the model, prompt version, and chunk settings?
+3. Why shouldn't Phase 7 trust this latency number?

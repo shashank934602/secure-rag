@@ -447,7 +447,12 @@ loaded this log automatically, so the rule survived the new session.
 
 **Where we are:** Phase 2, S7 (ISS-026): the eval runner, the baseline, then `v0.2.0`. S1–S6 are done.
 
-**What we learned:** so far, nothing new. The learner wants to study in a second chat while the main chat builds.
+**What we learned:**
+- **Baseline** = the scores of a fixed, committed version; every later change must be compared against it.
+- Phase 2 baseline (real models, 20 questions): recall@5 **0.929**, MRR **0.917**, key facts **0.857**, answered **12/14**, No-Answer **6/6**, 0 errors.
+- Both failures (g06, g17) are **retrieval** failures (the org chart isn't found), and that's Phase 3's target.
+- Latency p50/p95 9.5/13.3 s is inflated: the first 6 questions took ~1.4 s, then Groq's free tier throttled the burst (ISS-029). Numbers need their context.
+- Phase 2 closed: released **`v0.2.0`**.
 
 **How we learned it:** wrote `lessons/study-companion-context.md`, a context pack to paste into another chat. It holds tutor instructions (concepts first, one question at a time, don't change the repo, never print `.env`), project state, the system map, real numbers, incidents, a 10-item study agenda, and files to open.
 
@@ -455,4 +460,4 @@ loaded this log automatically, so the rule survived the new session.
 
 **Still unclear / open questions:** the study agenda items, which the second chat now covers.
 
-**Next session starts with:** finish S7 and release `v0.2.0`.
+**Next session starts with:** Phase 3 kickoff (better retrieval: keyword + vector search, reranking), aiming to fix g06/g17 without losing anything else. The study chat works through the agenda in parallel.

@@ -4,13 +4,16 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 2 — Postgres, API, baseline eval** (`context/feature-specs/02-postgres-api-baseline.md`). Spec complete and sliced into S1–S7 (ISS-020 … ISS-026) on 2026-10-21. S1–S2 done (2026-10-22). S1–S6 done (2026-10-29): answers from Postgres over a local web API; 20-question golden set; eval metrics. Next: S7 eval runner + baseline + `v0.2.0` (ISS-026). **Phase 1 is done: released `v0.1.0` on 2026-10-19.**
+**Phase 3 — better retrieval + LangGraph** (not started). **Phase 2 done: released `v0.2.0` on 2026-10-30** with a committed baseline (`eval/baselines/phase2.json`). Phase 1 released `v0.1.0` on 2026-10-19.
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 2 closed — `v0.2.0`** (2026-10-30, ISS-026)
+  - `python -m eval.run --save-baseline`: 20 golden questions through the API with real models and Postgres. Baseline: recall@5 0.929, MRR 0.917, key-fact score 0.857, answered 12/14 (misses g06, g17: org chart not retrieved, ISS-017), No-Answer 6/6, p50 9.5 s / p95 13.3 s (free-tier throttling, ISS-029), 0 errors.
+  - Tests: 90 offline, 39 db, 2 live.
 - **Phase 2 S6 — eval metrics** (2026-10-29, ISS-025)
   - `eval/metrics.py`: recall@k, reciprocal rank / MRR, key-fact score with normalisation of real model output, No-Answer correctness, latency percentiles, `summarise`. 22 tests; 86 offline tests in total.
 - **Phase 2 S5 — golden set** (2026-10-29, ISS-024)

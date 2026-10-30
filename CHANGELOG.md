@@ -13,6 +13,24 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-30 — Phase 2: Postgres, API, and a baseline eval
+
+Phase 2 checks pass: 90 offline, 39 db, and 2 live tests; golden set valid (20 questions); `/v1/ask` and `/healthz` verified with curl.
+
+**Baseline** (`eval/baselines/phase2.json`, Mistral `mistral-embed` + Groq `gpt-oss-120b`, prompt `answer_v1`, 400/50 chunks, top 5):
+
+| Metric | Value |
+|--------|------:|
+| recall@5 (answerable) | 0.929 |
+| MRR | 0.917 |
+| key-fact score | 0.857 |
+| answered (answerable) | 12 / 14 |
+| false refusals | 2 (g06, g17: org chart not retrieved, ISS-017) |
+| No-Answer accuracy (unanswerable) | 6 / 6 |
+| latency p50 / p95 | 9.5 s / 13.3 s (inflated by free-tier throttling, ISS-029) |
+
+The learner's explain-back of the S3–S6 code is still pending (build now, study later; see `lessons/study-companion-context.md`).
+
 ### Changed
 
 - Docker image pinned to `pgvector/pgvector:0.8.7-pg16` (was the floating `pg16` tag) in Compose and the test fixture, so every machine gets the same database version.
@@ -23,6 +41,8 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Eval runner `python -m eval.run [--save-baseline]`: the 20 golden questions through the API in-process (real models + Postgres), retried on failure, scored with `eval/metrics.py`; report to `eval/reports/` (gitignored), baseline to `eval/baselines/phase2.json` (ISS-026).
+- `lessons/study-companion-context.md`: context pack for studying in a second chat.
 - Eval metrics `eval/metrics.py`: recall@5, MRR, key-fact score (normalises real model spaces, hyphens, bold), No-Answer accuracy and false refusals, p50/p95 latency, `summarise` (ISS-025).
 - Golden set grown to 20 questions with `key_facts`; `scripts/check_golden.py` validates every key fact against its source page (ISS-024).
 - Web API `app/main.py`: `POST /v1/ask` (validated 1–1,000 chars, 422; generic 503 on failure; `request_id`) and `GET /healthz`; listens on 127.0.0.1 only; deps `fastapi`, `uvicorn`, dev `httpx` (ISS-023).
