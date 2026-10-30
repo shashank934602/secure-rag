@@ -1,0 +1,421 @@
+{
+  "created_at": "2026-10-30T05:32:57+00:00",
+  "git_commit": "d1b7b60",
+  "config": {
+    "chat_model": "groq:openai/gpt-oss-120b",
+    "chat_temperature": 0.0,
+    "embedding_model": "mistralai:mistral-embed",
+    "prompt_version": "answer_v1",
+    "chunk_size": 400,
+    "chunk_overlap": 50,
+    "top_k": 5,
+    "retriever": "postgres"
+  },
+  "summary": {
+    "questions": 20,
+    "answerable": 14,
+    "unanswerable": 6,
+    "recall_at_5": 0.9285714285714286,
+    "mrr": 0.9166666666666666,
+    "key_fact_score": 0.8571428571428571,
+    "answered_rate": 0.8571428571428571,
+    "false_refusals": 2,
+    "no_answer_accuracy": 1,
+    "latency_p50_s": 9.475999999999999,
+    "latency_p95_s": 13.254850000000001
+  },
+  "errors": 0,
+  "results": [
+    {
+      "id": "g01",
+      "answerable": true,
+      "expected_sources": [
+        "annual-leave-policy:1"
+      ],
+      "key_facts": [
+        "25 days",
+        "8 UK bank holidays"
+      ],
+      "retrieved": [
+        "annual-leave-policy:1",
+        "annual-leave-policy:1",
+        "sickness-absence-policy:1",
+        "sickness-absence-policy:1",
+        "remote-work-policy:1"
+      ],
+      "status": "answered",
+      "answer": "Full‑time employees are entitled to **25 days of paid annual leave** each leave year (in addition to the 8 UK bank holidays)【annual-leave-policy:1】.",
+      "latency_s": 1.118
+    },
+    {
+      "id": "g02",
+      "answerable": true,
+      "expected_sources": [
+        "annual-leave-policy:1"
+      ],
+      "key_facts": [
+        "5 days",
+        "31 March"
+      ],
+      "retrieved": [
+        "annual-leave-policy:1",
+        "annual-leave-policy:1",
+        "sickness-absence-policy:1",
+        "expense-policy:1",
+        "sickness-absence-policy:1"
+      ],
+      "status": "answered",
+      "answer": "You can carry over a maximum of **5 days** of unused annual leave into the next leave year, and any carried‑over days must be taken **by 31 March** of that year or they will be lost. [annual-leave-policy:1]",
+      "latency_s": 1.578
+    },
+    {
+      "id": "g03",
+      "answerable": true,
+      "expected_sources": [
+        "expense-policy:1"
+      ],
+      "key_facts": [
+        "£190"
+      ],
+      "retrieved": [
+        "expense-policy:1",
+        "expense-policy:1",
+        "annual-leave-policy:1",
+        "annual-leave-policy:1",
+        "vendor-contract-trackline:1"
+      ],
+      "status": "answered",
+      "answer": "The maximum hotel rate for a room‑only stay in London is **£190 per night**. [expense-policy:1]",
+      "latency_s": 1.42
+    },
+    {
+      "id": "g04",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-swiftparts:2"
+      ],
+      "key_facts": [
+        "45 days"
+      ],
+      "retrieved": [
+        "vendor-contract-swiftparts:2",
+        "vendor-contract-swiftparts:3",
+        "vendor-contract-trackline:1",
+        "sickness-absence-policy:1",
+        "annual-leave-policy:1"
+      ],
+      "status": "answered",
+      "answer": "Aldermoor must pay undisputed SwiftParts invoices within 45 days of the invoice date【vendor-contract-swiftparts:2:6】.",
+      "latency_s": 0.971
+    },
+    {
+      "id": "g05",
+      "answerable": true,
+      "expected_sources": [
+        "it-security-policy:1"
+      ],
+      "key_facts": [
+        "1 hour",
+        "555-0150",
+        "security@aldermoor.example.com"
+      ],
+      "retrieved": [
+        "it-security-policy:1",
+        "remote-work-policy:1",
+        "sickness-absence-policy:1",
+        "vendor-contract-trackline:1",
+        "annual-leave-policy:1"
+      ],
+      "status": "answered",
+      "answer": "You must report a lost work laptop **within 1 hour** of noticing it. Report it to the IT Service Desk by calling **555‑0150** or by emailing **security@aldermoor.example.com**【it-security-policy:1】.",
+      "latency_s": 1.35
+    },
+    {
+      "id": "g06",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-swiftparts:3",
+        "org-chart:1"
+      ],
+      "key_facts": [
+        "Hannah Brooks",
+        "hannah.brooks@aldermoor.example.com"
+      ],
+      "retrieved": [
+        "vendor-contract-swiftparts:1",
+        "vendor-contract-swiftparts:3",
+        "vendor-contract-trackline:1",
+        "vendor-contract-swiftparts:2",
+        "vendor-contract-cleanfleet:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 1.473
+    },
+    {
+      "id": "g07",
+      "answerable": true,
+      "expected_sources": [
+        "remote-work-policy:1",
+        "expense-policy:1"
+      ],
+      "key_facts": [
+        "£300",
+        "30 days"
+      ],
+      "retrieved": [
+        "expense-policy:1",
+        "remote-work-policy:1",
+        "expense-policy:1",
+        "remote-work-policy:1",
+        "annual-leave-policy:1"
+      ],
+      "status": "answered",
+      "answer": "The one‑off home office allowance is **£300** [remote-work-policy:1].  \nYou must submit the claim in SpendTrack within **30 days** of the purchase date, as required by the Expense Policy [expense-policy:1].",
+      "latency_s": 8.449
+    },
+    {
+      "id": "g08",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "annual-leave-policy:1",
+        "annual-leave-policy:1",
+        "sickness-absence-policy:1",
+        "sickness-absence-policy:1",
+        "remote-work-policy:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 10.303
+    },
+    {
+      "id": "g09",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "vendor-contract-trackline:1",
+        "vendor-contract-cleanfleet:1",
+        "vendor-contract-trackline:1",
+        "annual-leave-policy:1",
+        "vendor-contract-swiftparts:3"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 11.203
+    },
+    {
+      "id": "g10",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "employee-handbook:1",
+        "annual-leave-policy:1",
+        "expense-policy:1",
+        "it-security-policy:1",
+        "vendor-contract-trackline:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 13.237
+    },
+    {
+      "id": "g11",
+      "answerable": true,
+      "expected_sources": [
+        "sickness-absence-policy:1"
+      ],
+      "key_facts": [
+        "6 weeks"
+      ],
+      "retrieved": [
+        "sickness-absence-policy:1",
+        "sickness-absence-policy:1",
+        "annual-leave-policy:1",
+        "annual-leave-policy:1",
+        "employee-handbook:1"
+      ],
+      "status": "answered",
+      "answer": "You are entitled to **6 weeks** of company sick pay, because employees with 1 to 5 years of service receive six weeks of company sick pay [sickness-absence-policy:1].",
+      "latency_s": 12.943
+    },
+    {
+      "id": "g12",
+      "answerable": true,
+      "expected_sources": [
+        "health-and-safety-policy:1"
+      ],
+      "key_facts": [
+        "5 mph"
+      ],
+      "retrieved": [
+        "health-and-safety-policy:1",
+        "annual-leave-policy:1",
+        "health-and-safety-policy:1",
+        "annual-leave-policy:1",
+        "vendor-contract-cleanfleet:1"
+      ],
+      "status": "answered",
+      "answer": "The speed limit for all vehicles in the depot yards is **5 mph**【health-and-safety-policy:1】.",
+      "latency_s": 10.826
+    },
+    {
+      "id": "g13",
+      "answerable": true,
+      "expected_sources": [
+        "health-and-safety-policy:1"
+      ],
+      "key_facts": [
+        "24 hours",
+        "SafeSite"
+      ],
+      "retrieved": [
+        "health-and-safety-policy:1",
+        "it-security-policy:1",
+        "health-and-safety-policy:1",
+        "sickness-absence-policy:1",
+        "sickness-absence-policy:1"
+      ],
+      "status": "answered",
+      "answer": "You must report the near‑miss within 24 hours. Use the **SafeSite** app or complete the paper form that is kept in each site office. [health-and-safety-policy:1]",
+      "latency_s": 12.046
+    },
+    {
+      "id": "g14",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-trackline:1"
+      ],
+      "key_facts": [
+        "6 months"
+      ],
+      "retrieved": [
+        "vendor-contract-trackline:1",
+        "vendor-contract-trackline:1",
+        "annual-leave-policy:1",
+        "remote-work-policy:1",
+        "health-and-safety-policy:1"
+      ],
+      "status": "answered",
+      "answer": "TrackLine retains vehicle location history for **6 months** before deleting it, unless Aldermoor requests specific records to be kept for an investigation. [vendor-contract-trackline:1]",
+      "latency_s": 7.559
+    },
+    {
+      "id": "g15",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-cleanfleet:1"
+      ],
+      "key_facts": [
+        "£4,200"
+      ],
+      "retrieved": [
+        "vendor-contract-cleanfleet:1",
+        "vendor-contract-cleanfleet:1",
+        "vendor-contract-trackline:1",
+        "vendor-contract-trackline:1",
+        "expense-policy:1"
+      ],
+      "status": "answered",
+      "answer": "Aldermoor pays CleanFleet a fixed fee of **£4,200 per month** (excluding VAT) for fleet cleaning services. [vendor-contract-cleanfleet:1]",
+      "latency_s": 10.912
+    },
+    {
+      "id": "g16",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-trackline:1",
+        "vendor-contract-swiftparts:2"
+      ],
+      "key_facts": [
+        "TrackLine",
+        "30 days",
+        "45 days"
+      ],
+      "retrieved": [
+        "vendor-contract-swiftparts:2",
+        "vendor-contract-trackline:1",
+        "vendor-contract-swiftparts:3",
+        "vendor-contract-swiftparts:1",
+        "vendor-contract-trackline:1"
+      ],
+      "status": "answered",
+      "answer": "Aldermoor must pay TrackLine’s invoices sooner – they are due within 30 days of the invoice date, whereas SwiftParts invoices are payable within 45 days of the invoice date【vendor-contract-trackline:1】【vendor-contract-swiftparts:2】.",
+      "latency_s": 9.609
+    },
+    {
+      "id": "g17",
+      "answerable": true,
+      "expected_sources": [
+        "employee-handbook:1",
+        "org-chart:1"
+      ],
+      "key_facts": [
+        "£50",
+        "Head of Procurement",
+        "hannah.brooks@aldermoor.example.com"
+      ],
+      "retrieved": [
+        "vendor-contract-cleanfleet:1",
+        "vendor-contract-trackline:1",
+        "org-chart:1",
+        "expense-policy:1",
+        "vendor-contract-swiftparts:3"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 8.861
+    },
+    {
+      "id": "g18",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "health-and-safety-policy:1",
+        "annual-leave-policy:1",
+        "employee-handbook:1",
+        "expense-policy:1",
+        "annual-leave-policy:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 13.594
+    },
+    {
+      "id": "g19",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "annual-leave-policy:1",
+        "org-chart:1",
+        "vendor-contract-trackline:1",
+        "employee-handbook:1",
+        "vendor-contract-cleanfleet:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 9.343
+    },
+    {
+      "id": "g20",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "annual-leave-policy:1",
+        "annual-leave-policy:1",
+        "employee-handbook:1",
+        "vendor-contract-trackline:1",
+        "remote-work-policy:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 12.136
+    }
+  ]
+}
