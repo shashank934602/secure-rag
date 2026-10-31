@@ -20,6 +20,7 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "pypdf>=6.20.0",
     "python-dotenv>=1.2.4",
+    "sentence-transformers>=6.2.0",
     "uvicorn>=0.54.0",
 ]
 

@@ -16,6 +16,7 @@ from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
 from app.retrieval.embeddings import make_embeddings
 from app.retrieval.pg_search import PgRetriever
+from app.retrieval.rerank import CrossEncoderReranker, Reranker
 from app.retrieval.retriever import Retriever
 from app.retrieval.search import ChunkIndex
 
@@ -25,16 +26,28 @@ _PROMPTS = Path(__file__).resolve().parent.parent / "prompts"
 
 
 class Answerer:
-    def __init__(self, index: Retriever, chat_model: BaseChatModel, top_k: int) -> None:
+    def __init__(
+        self,
+        index: Retriever,
+        chat_model: BaseChatModel,
+        top_k: int,
+        *,
+        reranker: Reranker | None = None,
+        candidates: int = 20,
+        threshold: float = 0.0,
+    ) -> None:
         self.index = index
         self.chat_model = chat_model
         self.top_k = top_k
+        self.reranker = reranker
+        self.candidates = candidates  # searched, then reranked down to top_k
+        self.threshold = threshold  # best reranker score below this → No-Answer, no LLM call
         template = Template((_PROMPTS / f"{PROMPT_VERSION}.md").read_text(encoding="utf-8"))
         self._system_prompt = template.substitute(no_answer=NO_ANSWER)
 
     def answer(self, question: str) -> AnswerResult:
-        retrieved = self.index.search(question, k=self.top_k)
-        if not retrieved:
+        retrieved = self.retrieve(question)
+        if not retrieved or (self.reranker and retrieved[0].score < self.threshold):
             return self._no_answer(retrieved)
 
         reply = self.chat_model.invoke(
@@ -52,6 +65,13 @@ class Answerer:
             retrieved=retrieved,
             prompt_version=PROMPT_VERSION,
         )
+
+    def retrieve(self, question: str) -> list[ScoredChunk]:
+        """The top_k chunks the LLM will see: searched directly, or reranked from candidates."""
+        if self.reranker is None:
+            return self.index.search(question, k=self.top_k)
+        candidates = self.index.search(question, k=self.candidates)
+        return self.reranker.rerank(question, candidates, k=self.top_k)
 
     def _no_answer(self, retrieved: list[ScoredChunk]) -> AnswerResult:
         return AnswerResult(
@@ -77,6 +97,7 @@ def build_answerer(
     embeddings: Embeddings | None = None,
     chat_model: BaseChatModel | None = None,
     retriever: Retriever | None = None,
+    reranker: Reranker | None = None,
 ) -> Answerer:
     """Create the answerer: the given retriever, or an in-memory index over the corpus
     (loaded, chunked, and embedded on every start), plus the chat model named in settings."""
@@ -92,7 +113,16 @@ def build_answerer(
     model = chat_model or init_chat_model(
         settings.chat_model, temperature=settings.chat_temperature
     )
-    return Answerer(index=retriever, chat_model=model, top_k=settings.top_k)
+    if reranker is None and settings.rerank:
+        reranker = CrossEncoderReranker(settings.reranker_model)
+    return Answerer(
+        index=retriever,
+        chat_model=model,
+        top_k=settings.top_k,
+        reranker=reranker,
+        candidates=settings.candidates,
+        threshold=settings.rerank_threshold,
+    )
 
 
 def build_db_answerer(
@@ -100,6 +130,7 @@ def build_db_answerer(
     *,
     embeddings: Embeddings | None = None,
     chat_model: BaseChatModel | None = None,
+    reranker: Reranker | None = None,
 ) -> Answerer:
     """Create the answerer over Postgres: chunks were embedded once by `python -m app.ingest`,
     so each question embeds only itself."""
@@ -113,4 +144,4 @@ def build_db_answerer(
         mode=settings.retrieval_mode,
         candidates=settings.candidates,
     )
-    return build_answerer(settings, chat_model=chat_model, retriever=retriever)
+    return build_answerer(settings, chat_model=chat_model, retriever=retriever, reranker=reranker)

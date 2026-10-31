@@ -10,6 +10,8 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import Field
 
+from app.domain import ScoredChunk
+
 
 class ScriptedChatModel(BaseChatModel):
     """Returns the scripted responses in order and records every prompt it was sent."""
@@ -70,3 +72,18 @@ class CountingEmbeddings(Embeddings):
     def embed_query(self, text: str) -> list[float]:
         self.embedded.append(text)
         return self._embed(text)
+
+
+class ScriptedReranker:
+    """Scores each chunk from a fixed table by chunk id (default 0), best first; records calls."""
+
+    def __init__(self, scores: dict[str, float]) -> None:
+        self.scores = scores
+        self.calls: list[tuple[str, int]] = []  # (question, number of candidates)
+
+    def rerank(self, question: str, candidates: list[ScoredChunk], k: int) -> list[ScoredChunk]:
+        self.calls.append((question, len(candidates)))
+        scored = [
+            ScoredChunk(chunk=c.chunk, score=self.scores.get(c.chunk.id, 0.0)) for c in candidates
+        ]
+        return sorted(scored, key=lambda s: s.score, reverse=True)[:k]

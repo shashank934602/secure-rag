@@ -49,7 +49,7 @@ def evaluate(
     results = []
     with TestClient(app) as client:
         for row in rows:
-            hits = answerer.index.search(row["question"], k)
+            hits = answerer.retrieve(row["question"])  # what the LLM sees (reranked if on)
             retrieved = [f"{hit.chunk.doc_id}:{hit.chunk.page}" for hit in hits]
             start = clock()
             body = _ask(client, row["question"], retries, retry_wait_s)
@@ -93,6 +93,11 @@ def build_report(results: list[QuestionResult], settings: Settings) -> dict:
             "chunk_overlap": settings.chunk_overlap,
             "top_k": settings.top_k,
             "retriever": "postgres",
+            "retrieval_mode": settings.retrieval_mode,
+            "candidates": settings.candidates,
+            "rerank": settings.rerank,
+            "reranker_model": settings.reranker_model if settings.rerank else None,
+            "rerank_threshold": settings.rerank_threshold if settings.rerank else None,
         },
         "summary": summarise(results, k=settings.top_k),
         "errors": sum(r.status == "error" for r in results),

@@ -29,7 +29,12 @@ class Settings(BaseSettings):
     # Retrieval (spec 03 D7): dense = vector only; hybrid = vector + keyword, fused with RRF.
     top_k: int = 5
     retrieval_mode: Literal["dense", "keyword", "hybrid"] = "dense"
-    candidates: int = 20  # per search list before fusion (and, from S2, before reranking)
+    candidates: int = 20  # per search list before fusion, and the number reranked
+    # Reranking (spec 03 D4–D5): a local cross-encoder picks top_k of the candidates; if the
+    # best score is below the threshold, the answer is No-Answer without calling the LLM.
+    rerank: bool = False
+    reranker_model: str = "BAAI/bge-reranker-base"
+    rerank_threshold: float = 0.0
 
     # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
     database_url: str = ""

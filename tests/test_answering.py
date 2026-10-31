@@ -8,7 +8,7 @@ from app.answering.answer import NO_ANSWER, Answerer, build_answerer
 from app.config import Settings
 from app.domain import Chunk, Citation
 from app.retrieval.search import ChunkIndex
-from tests.fakes import KeywordEmbeddings, ScriptedChatModel
+from tests.fakes import KeywordEmbeddings, ScriptedChatModel, ScriptedReranker
 
 VOCAB = ["leave", "holiday", "carry", "hotel", "london", "laptop"]
 
@@ -171,3 +171,51 @@ def test_a_given_retriever_is_used_and_the_corpus_is_not_loaded(tmp_path) -> Non
     )
 
     assert built.index is retriever
+
+
+# --- reranking and the relevance threshold (Phase 3, ISS-031) --------------------------------
+
+
+def _reranked(scores: dict[str, float], *responses: str, threshold: float = 0.3):
+    reranker = ScriptedReranker(scores)
+    model = ScriptedChatModel(responses=list(responses))
+    built = Answerer(
+        index=ChunkIndex(CHUNKS, KeywordEmbeddings(VOCAB)),
+        chat_model=model,
+        top_k=1,
+        reranker=reranker,
+        candidates=3,
+        threshold=threshold,
+    )
+    return built, reranker, model
+
+
+def test_the_reranker_sees_all_candidates_and_picks_the_top_k() -> None:
+    built, reranker, model = _reranked(
+        {"expense-policy:1:0": 0.9, "leave-policy:1:0": 0.2}, "Limit is 190 [expense-policy:1]."
+    )
+
+    result = built.answer("hotel?")
+
+    assert reranker.calls == [("hotel?", 3)]  # all 3 candidates, not just top_k
+    assert [r.chunk.id for r in result.retrieved] == ["expense-policy:1:0"]
+    assert result.retrieved[0].score == 0.9
+    assert '<document id="expense-policy:1">' in model.calls[0][1].content
+    assert "leave-policy" not in model.calls[0][1].content
+
+
+def test_below_the_threshold_is_a_no_answer_without_calling_the_llm() -> None:
+    built, _, model = _reranked({"leave-policy:1:0": 0.05}, "should never be used")
+
+    result = built.answer("What is the CEO's salary?")
+
+    assert result.status == "no_answer"
+    assert model.calls == []  # no LLM call: faster, and costs nothing
+    assert result.retrieved[0].score == 0.05  # kept for --debug and the eval
+
+
+def test_at_the_threshold_the_llm_is_asked() -> None:
+    built, _, model = _reranked({"leave-policy:1:0": 0.3}, "25 days [leave-policy:1].")
+
+    assert built.answer("leave?").status == "answered"
+    assert len(model.calls) == 1
