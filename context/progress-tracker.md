@@ -4,13 +4,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 3 — better retrieval + LangGraph** (`context/feature-specs/03-hybrid-retrieval-rerank-langgraph.md`): spec written and sliced S1–S4 (ISS-030 … ISS-033) on 2026-10-31. **Phase 2 done: released `v0.2.0` on 2026-10-30** with a committed baseline (`eval/baselines/phase2.json`). Phase 1 released `v0.1.0` on 2026-10-19.
+**Phase 4 — auth, tenants, and access control** (not started). **Phase 3 done: released `v0.3.0` on 2026-10-31** (hybrid + rerank by default; baseline `eval/baselines/phase3.json`). Phase 2 `v0.2.0` 2026-10-30; Phase 1 `v0.1.0` 2026-10-19.
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 3 closed — `v0.3.0`** (2026-10-31, ISS-033)
+  - Three-way eval, same day: MRR dense 0.917 → hybrid 0.964 → hybrid + rerank **1.000**; recall@5 0.929, key facts 0.857, answered 12/14, No-Answer 6/6 unchanged. Defaults now hybrid + rerank (reranker loads on first use). g06/g17 remain (two-hop, ISS-017).
 - **Phase 3 S3 — LangGraph flow** (2026-10-31, ISS-032)
   - Answering runs as a compiled LangGraph graph (`app/answering/graph.py`); invalid citations get one retry with a correction note; below-threshold retrieval skips the LLM. 104 offline, 47 db, 4 live tests.
 - **Phase 3 S2 — reranker** (2026-10-31, ISS-031)

@@ -512,4 +512,10 @@ loaded this log automatically, so the rule survived the new session.
 - Real run with hybrid + rerank: the leave question's best chunk scored 0.929 against 0.059 for the 3rd; the CEO question's best only 0.003.
 - Notes: `lessons/03-better-retrieval.md`.
 
-**Next session starts with:** S4, the three-way eval (dense / hybrid / hybrid + rerank) and `v0.3.0`.
+**Update — S4 eval; Phase 3 released `v0.3.0` (ISS-033):**
+- Same-day runs: MRR dense 0.917 → hybrid 0.964 → **hybrid + rerank 1.000**; recall@5 0.929, key facts 0.857, answered 12/14, and No-Answer 6/6 didn't change.
+- Honest reading: better **ordering** (the right page is always first), not better **coverage**. g06/g17 need a two-hop page that no single search finds; that needs multi-step retrieval (ISS-017).
+- Dense reproduced the Phase 2 numbers exactly, so the eval is repeatable.
+- Defaults now hybrid + rerank; the reranker loads on first use. Baseline `eval/baselines/phase3.json`.
+
+**Next session starts with:** Phase 4, login, roles, and per-company isolation (row-level security).

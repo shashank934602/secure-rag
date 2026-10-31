@@ -8,7 +8,7 @@
 | S1 | Keyword search and RRF | ✅ |
 | S2 | Rerankers (cross-encoders) and thresholds | ✅ |
 | S3 | The answering flow as a state machine (LangGraph) | ✅ |
-| S4 | Comparing dense vs hybrid vs hybrid + rerank | — |
+| S4 | Comparing dense vs hybrid vs hybrid + rerank | ✅ |
 
 ---
 
@@ -122,6 +122,28 @@ couple of edges, not a rewrite. `Answerer.answer(question)` didn't change, so th
 
 ---
 
+## S4 — Did it help? (ISS-033)
+
+Three runs of the 20 golden questions, same day, same models; only retrieval changed:
+
+| Metric | Dense | Hybrid | Hybrid + rerank |
+|--------|------:|-------:|----------------:|
+| recall@5 | 0.929 | 0.929 | 0.929 |
+| MRR | 0.917 | 0.964 | **1.000** |
+| key-fact score | 0.857 | 0.857 | 0.857 |
+| answered | 12/14 | 12/14 | 12/14 |
+| No-Answer accuracy | 6/6 | 6/6 | 6/6 |
+
+**Reading it honestly:**
+- **Better ordering:** with hybrid + rerank the right page is **first** for every answerable question (MRR 1.000). Better
+  ordering matters: the LLM reads the most relevant text first, and later phases may send fewer chunks.
+- **Not better coverage:** recall@5 and "answered" didn't move. g06 and g17 still need the org chart, a **two-hop** page:
+  the question doesn't describe it, so neither meaning nor keywords nor a reranker can pick it. The fix is a different
+  technique, **multi-step retrieval** (search, read "Head of Procurement", search again), logged on ISS-017.
+- **Nothing got worse**, so hybrid + rerank is the new default.
+- **Dense reproduced the Phase 2 baseline exactly** (0.929 / 0.917 / 0.857), which shows the eval is repeatable: a precondition for trusting any comparison.
+- Timing (8–20 s) mostly measures Groq's free tier, not our system (ISS-029).
+
 ## Explain it back (later)
 
 1. Why does RRF use ranks instead of the two searches' scores?
@@ -129,3 +151,4 @@ couple of edges, not a rewrite. `Answerer.answer(question)` didn't change, so th
 3. What does a cross-encoder do that embeddings can't, and why not use it on every chunk?
 4. Why couldn't we set a relevance threshold, and what handles "I don't know" instead?
 5. What happens, step by step in the graph, when the model forgets its citations?
+6. Hybrid + rerank improved MRR but not recall@5: what's the difference, and why couldn't reranking fix g06?

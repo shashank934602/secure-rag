@@ -13,6 +13,28 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-31 — Phase 3: hybrid retrieval, reranking, LangGraph
+
+Phase 3 check passes: hybrid + rerank beats dense-only on ranking and loses nothing. Three runs on the same day, 20 golden
+questions, real models (`eval/baselines/phase3.json` = hybrid + rerank):
+
+| Metric | Dense | Hybrid | Hybrid + rerank |
+|--------|------:|-------:|----------------:|
+| recall@5 | 0.929 | 0.929 | 0.929 |
+| MRR | 0.917 | 0.964 | **1.000** |
+| key-fact score | 0.857 | 0.857 | 0.857 |
+| answered | 12/14 | 12/14 | 12/14 |
+| No-Answer accuracy | 6/6 | 6/6 | 6/6 |
+
+g06 and g17 still fail: they need the org chart, a two-hop page no single search finds (ISS-017). Latency isn't comparable
+across runs (free-tier throttling, ISS-029). Defaults are now `retrieval_mode=hybrid`, `rerank=true` (threshold off, ISS-034).
+The learner's explain-back is pending (build now, study later).
+
+### Changed
+
+- Defaults: `retrieval_mode=hybrid`, `rerank=true`; the reranker model loads on first use (ISS-033).
+- `python -m eval.run --save-baseline NAME` writes `eval/baselines/NAME.json` (ISS-033).
+
 ### Changed
 
 - Answering runs as a LangGraph state machine (`app/answering/graph.py`); invalid citations now get **one retry** with a correction note before a No-Answer; the model's own No-Answer is final; dep `langgraph` (ISS-032).

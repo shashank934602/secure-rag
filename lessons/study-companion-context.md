@@ -40,8 +40,8 @@ tamper-evident audit trail, and an evaluation gate. The data is a **fake company
 |-------|------|--------|
 | 1 | Basic RAG pipeline (CLI) | ✅ released `v0.1.0` |
 | 2 | Postgres + pgvector database, ingest, database search, web API, 20-question test set, metrics, baseline | ✅ released `v0.2.0` (2026-10-30) |
-| 3 | Better retrieval (keyword + vector search, reranking), LangGraph flow | next |
-| 4 | Login, roles, per-company isolation (row-level security) | |
+| 3 | Better retrieval (keyword + vector search, reranking), LangGraph flow | ✅ released `v0.3.0` (2026-10-31) |
+| 4 | Login, roles, per-company isolation (row-level security) | next |
 | 5 | Guardrails: prompt injection, PII, grounding judge | |
 | 6 | Audit trail with a hash chain, observability | |
 | 7 | Full evaluation + CI gate | |
@@ -73,6 +73,7 @@ LLM `openai/gpt-oss-120b` writes the answer).
 | Ingest | 1st run 9.6 s (23 chunks embedded); 2nd run 0.7 s (nothing re-sent) |
 | Database vs in-memory | same top-5 scores; **1** text sent to Mistral per question instead of 24; 3.2 s vs 5.1 s |
 | Test set now | 20 questions: 14 answerable (4 need two documents), 6 unanswerable (4 near-misses) |
+| **Phase 3 (hybrid + rerank)** | MRR 0.917 → **1.000**; recall@5 0.929, answered 12/14, No-Answer 6/6 unchanged; reranker: leave chunk 0.929 vs 3rd 0.059 |
 | **Phase 2 baseline** | recall@5 0.929 · MRR 0.917 · key facts 0.857 · answered 12/14 (g06, g17 miss the org chart) · No-Answer 6/6 · p50/p95 9.5/13.3 s (free-tier throttling) |
 
 ## Things that went wrong (great teaching material)
@@ -101,6 +102,7 @@ Work through these; each points to the notes that answer it.
 8. **Test set** (S5): what is a near-miss and why include it?
 9. **Metrics** (S6): right page 5th → recall@5 and reciprocal rank? Why report false refusals with No-Answer accuracy? Why p95, not the average?
 10. **Why not a dedicated vector DB?** (`lessons/02-…`, S1 box; ADR-0001)
+12. **Phase 3** (`lessons/03-better-retrieval.md`): RRF, cross-encoders, why no threshold, the graph, MRR vs recall.
 11. **Baseline** (S7): why are g06 and g17 retrieval failures? Why record settings in a report? Why distrust this latency?
 
 ## Files worth opening
