@@ -505,4 +505,11 @@ loaded this log automatically, so the rule survived the new session.
 - **Calibration found no clean threshold:** answerable questions' best scores go as low as 0.049 (g13), and unanswerable ones as high as 0.479 (g10). The threshold stays off; the LLM's rule still handles "I don't know". Lesson: reranker scores **rank** well but aren't calibrated probabilities.
 - Ranking: every answerable question's main page is in the top 5 after reranking; the org chart (two-hop) is still missed for g06 and g17.
 
-**Next session starts with:** S3, the LangGraph flow.
+**Update — S3 LangGraph flow (ISS-032):**
+- The answering steps are now a **state machine**: nodes (retrieve, generate, check_citations, no_answer) that update a shared state, with decisions on the edges.
+- New: invalid citations get **one retry** with the rejected reply and a correction note; the model's own "I don't know" is final.
+- Why: Phase 5 guards and Phase 6 audit become extra nodes, not a rewrite. Callers (CLI, API, eval) didn't change.
+- Real run with hybrid + rerank: the leave question's best chunk scored 0.929 against 0.059 for the 3rd; the CEO question's best only 0.003.
+- Notes: `lessons/03-better-retrieval.md`.
+
+**Next session starts with:** S4, the three-way eval (dense / hybrid / hybrid + rerank) and `v0.3.0`.

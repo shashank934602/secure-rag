@@ -11,6 +11,8 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 3 S3 — LangGraph flow** (2026-10-31, ISS-032)
+  - Answering runs as a compiled LangGraph graph (`app/answering/graph.py`); invalid citations get one retry with a correction note; below-threshold retrieval skips the LLM. 104 offline, 47 db, 4 live tests.
 - **Phase 3 S2 — reranker** (2026-10-31, ISS-031)
   - `CrossEncoderReranker` (`BAAI/bge-reranker-base`, local, MPS; first download ~1 GB / 5 min). `Answerer(reranker=, candidates=, threshold=)`: search `candidates`, rerank to `top_k`; below the threshold → No-Answer without an LLM call. `Answerer.retrieve()` is what the eval scores.
   - Calibration on the golden set: answerable best scores reach down to 0.049 and unanswerable up to 0.479, so there's no clean threshold; it stays 0.0 (ISS-034). Settings default `rerank=False` until the S4 eval.

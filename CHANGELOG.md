@@ -13,8 +13,13 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Changed
+
+- Answering runs as a LangGraph state machine (`app/answering/graph.py`); invalid citations now get **one retry** with a correction note before a No-Answer; the model's own No-Answer is final; dep `langgraph` (ISS-032).
+
 ### Added
 
+- `lessons/03-better-retrieval.md`: Phase 3 concepts (keyword search, RRF, cross-encoders, thresholds, state machines) with real numbers.
 - Local cross-encoder reranker (`BAAI/bge-reranker-base` via `sentence-transformers`) behind a `Reranker` protocol; `Answerer` reranks candidates to top-k, with an optional relevance threshold that returns No-Answer without calling the LLM; settings `rerank`, `reranker_model`, `rerank_threshold`; eval reports record retrieval settings (ISS-031).
 - Keyword search (migration `0002`: generated `content_tsv` + GIN index) and hybrid search fused with Reciprocal Rank Fusion; `PgRetriever(mode=dense|keyword|hybrid)`, `Settings.retrieval_mode`, `candidates` (ISS-030).
 
