@@ -110,5 +110,7 @@ def build_db_answerer(
         embeddings or make_embeddings(settings.embedding_model),
         tenant=settings.tenant,
         roles=settings.roles,
+        mode=settings.retrieval_mode,
+        candidates=settings.candidates,
     )
     return build_answerer(settings, chat_model=chat_model, retriever=retriever)

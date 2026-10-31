@@ -128,3 +128,16 @@ def test_deleting_a_document_deletes_its_chunks(pg: PgUrls) -> None:
         ).fetchone()
         conn.rollback()
     assert left == 0
+
+
+def test_chunks_have_a_keyword_index(pg: PgUrls) -> None:
+    # Migration 0002: a generated full-text column, so keyword search needs no extra writes.
+    (column_type,) = _one(
+        pg.admin,
+        """SELECT format_type(atttypid, atttypmod) FROM pg_attribute
+           WHERE attrelid = 'chunks'::regclass AND attname = 'content_tsv'""",
+    )
+    with psycopg.connect(pg.admin) as conn:
+        rows = conn.execute("SELECT indexdef FROM pg_indexes WHERE tablename = 'chunks'").fetchall()
+    assert column_type == "tsvector"
+    assert any("USING gin" in d and "content_tsv" in d for (d,) in rows)

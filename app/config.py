@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,8 +26,10 @@ class Settings(BaseSettings):
     # but 400 is far below mistral-embed's 8,192-token input limit, so the estimate is safe.
     tokenizer_encoding: str = "cl100k_base"
 
-    # Retrieval.
+    # Retrieval (spec 03 D7): dense = vector only; hybrid = vector + keyword, fused with RRF.
     top_k: int = 5
+    retrieval_mode: Literal["dense", "keyword", "hybrid"] = "dense"
+    candidates: int = 20  # per search list before fusion (and, from S2, before reranking)
 
     # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
     database_url: str = ""

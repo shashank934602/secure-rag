@@ -52,8 +52,10 @@ def conn(pg: PgUrls, corpus: Path) -> Iterator[psycopg.Connection]:
         c.execute("DELETE FROM tenants WHERE name <> 'Aldermoor'")
 
 
-def _retriever(conn: psycopg.Connection, roles: list[str] | None = None) -> PgRetriever:
-    return PgRetriever(conn, EMBEDDINGS, tenant="Aldermoor", roles=roles or ["employee"])
+def _retriever(
+    conn: psycopg.Connection, roles: list[str] | None = None, mode: str = "dense"
+) -> PgRetriever:
+    return PgRetriever(conn, EMBEDDINGS, tenant="Aldermoor", roles=roles or ["employee"], mode=mode)
 
 
 def _doc_ids(results) -> list[str]:
@@ -188,3 +190,47 @@ def test_an_empty_database_returns_nothing(conn) -> None:
 def test_an_unknown_tenant_is_an_error(conn) -> None:
     with pytest.raises(ValueError, match="not found"):
         PgRetriever(conn, EMBEDDINGS, tenant="Nobody Ltd", roles=["employee"])
+
+
+# --- keyword and hybrid search (Phase 3, ISS-030) ---------------------------------------------
+
+
+def test_keyword_search_finds_the_chunk_with_the_exact_word(conn) -> None:
+    results = _retriever(conn, mode="keyword").search("What are the password rules?", k=3)
+    assert _doc_ids(results)[0] == "it-policy"
+
+
+def test_keyword_search_returns_only_chunks_that_contain_a_word(conn) -> None:
+    # Only the expense chunk mentions a hotel; the others don't match at all.
+    assert _doc_ids(_retriever(conn, mode="keyword").search("hotel", k=10)) == ["expense-policy"]
+
+
+def test_keyword_search_with_no_usable_words_returns_nothing(conn) -> None:
+    assert _retriever(conn, mode="keyword").search("?!", k=5) == []
+
+
+def test_keyword_search_ignores_punctuation_and_operators(conn) -> None:
+    # Quotes, minus signs, and "or" must not break or change the query.
+    results = _retriever(conn, mode="keyword").search('"hotel" -limit OR or (password)', k=5)
+    assert set(_doc_ids(results)) == {"expense-policy", "it-policy"}
+
+
+def test_hybrid_search_combines_both_lists(conn) -> None:
+    results = _retriever(conn, mode="hybrid").search("hotel expense", k=3)
+    assert _doc_ids(results)[0] == "expense-policy"
+    assert len(results) == 3  # dense contributes chunks keyword search didn't match
+
+
+@pytest.mark.parametrize("mode", ["keyword", "hybrid"])
+def test_every_mode_applies_the_security_filters(conn, mode) -> None:
+    conn.execute(
+        """UPDATE chunks SET is_active = false
+           WHERE document_id = (SELECT id FROM documents WHERE slug = 'leave-policy')"""
+    )
+    conn.execute(
+        """UPDATE chunks SET allowed_roles = '{hr}'
+           WHERE document_id = (SELECT id FROM documents WHERE slug = 'expense-policy')"""
+    )
+    found = _doc_ids(_retriever(conn, mode=mode).search("leave holiday hotel expense", k=10))
+    assert "leave-policy" not in found  # inactive
+    assert "expense-policy" not in found  # wrong role
