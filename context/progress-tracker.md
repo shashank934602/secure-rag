@@ -11,6 +11,10 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 3 S1 — keyword + hybrid search** (2026-10-31, ISS-030)
+  - Migration `0002`: `chunks.content_tsv` (generated full text) + GIN index; dev DB at `0002 (head)`, 23/23 chunks indexed.
+  - `PgRetriever` modes `dense` / `keyword` / `hybrid` (RRF, 20 candidates per list); `Settings.retrieval_mode` (default still `dense`) and `candidates`.
+  - Real ranks for the failing questions: g17's handbook 7th → 1st (exact words "gift", "declare"); the org chart drops (g06 6th → 10th, g17 3rd → 6th): it's a two-hop page.
 - **Phase 2 closed — `v0.2.0`** (2026-10-30, ISS-026)
   - `python -m eval.run --save-baseline`: 20 golden questions through the API with real models and Postgres. Baseline: recall@5 0.929, MRR 0.917, key-fact score 0.857, answered 12/14 (misses g06, g17: org chart not retrieved, ISS-017), No-Answer 6/6, p50 9.5 s / p95 13.3 s (free-tier throttling, ISS-029), 0 errors.
   - Tests: 90 offline, 39 db, 2 live.

@@ -494,4 +494,10 @@ loaded this log automatically, so the rule survived the new session.
 
 **What I can now explain:** pending (study chat).
 
-**Next session starts with:** S1, keyword search + hybrid fusion.
+**Update — S1 keyword + hybrid search (ISS-030):**
+- **Keyword search** (Postgres full text): finds chunks containing the question's exact words; great for names like SwiftParts or SafeSite.
+- **RRF** merges ranked lists by **rank** (1 / (60 + rank), summed), because keyword scores and similarities aren't on the same scale.
+- Real result, mixed: g17's handbook went **7th → 1st** ("gift", "declare" match exactly), but the org chart went **down** (g06 6th → 10th). It's a **two-hop** page: the question asks "who owns the contract", the contract says "Head of Procurement", and only the org chart names her. The question's words don't describe that page.
+- Lesson: a technique that's "usually better" can hurt specific cases. Measure per question, not only on average.
+
+**Next session starts with:** S2, the reranker.

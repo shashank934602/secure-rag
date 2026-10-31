@@ -13,6 +13,10 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- Keyword search (migration `0002`: generated `content_tsv` + GIN index) and hybrid search fused with Reciprocal Rank Fusion; `PgRetriever(mode=dense|keyword|hybrid)`, `Settings.retrieval_mode`, `candidates` (ISS-030).
+
 ## [0.2.0] — 2026-10-30 — Phase 2: Postgres, API, and a baseline eval
 
 Phase 2 checks pass: 90 offline, 39 db, and 2 live tests; golden set valid (20 questions); `/v1/ask` and `/healthz` verified with curl.
