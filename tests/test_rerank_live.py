@@ -24,7 +24,7 @@ def reranker() -> CrossEncoderReranker:
 def test_the_relevant_chunk_is_ranked_first_with_a_0_to_1_score(reranker) -> None:
     candidates = [
         _candidate("expense-policy", "The maximum nightly hotel rate is £150 outside London."),
-        _candidate("annual-leave-policy", "Full-time employees receive 25 days of paid annual leave."),
+        _candidate("annual-leave-policy", "Full-time employees get 25 days of paid annual leave."),
     ]
 
     ranked = reranker.rerank("How many days of annual leave do I get?", candidates, k=2)
