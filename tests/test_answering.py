@@ -84,27 +84,34 @@ def test_no_answer_sentence_with_extra_text_is_still_no_answer() -> None:
 
 
 def test_answer_without_citations_becomes_no_answer() -> None:
-    result = answerer("You get 25 days of leave.").answer(QUESTION)
+    # The model repeats its mistake on the retry (Phase 3: one retry), so it's a No-Answer.
+    a = answerer("You get 25 days of leave.", "You get 25 days of leave.")
+
+    result = a.answer(QUESTION)
 
     assert result.status == "no_answer"
     assert result.answer == NO_ANSWER
+    assert len(a.chat_model.calls) == 2
 
 
 def test_citation_of_a_chunk_that_was_not_retrieved_becomes_no_answer() -> None:
-    result = answerer("Hotels cost 190 [expense-policy:1].").answer(QUESTION)  # top-2 is leave only
+    bad = "Hotels cost 190 [expense-policy:1]."  # top-2 is leave only
+    result = answerer(bad, bad).answer(QUESTION)
 
     assert result.status == "no_answer"
     assert result.citations == []
 
 
 def test_citation_of_the_wrong_page_becomes_no_answer() -> None:
-    result = answerer("You get 25 days [leave-policy:2].").answer(QUESTION)
+    bad = "You get 25 days [leave-policy:2]."
+    result = answerer(bad, bad).answer(QUESTION)
 
     assert result.status == "no_answer"
 
 
 def test_one_invalid_citation_among_valid_ones_becomes_no_answer() -> None:
-    result = answerer("25 days [leave-policy:1], see also [made-up-doc:1].").answer(QUESTION)
+    bad = "25 days [leave-policy:1], see also [made-up-doc:1]."
+    result = answerer(bad, bad).answer(QUESTION)
 
     assert result.status == "no_answer"
 

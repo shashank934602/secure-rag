@@ -6,12 +6,13 @@ from string import Template
 from langchain.chat_models import init_chat_model
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.answering.citations import all_citations_retrieved, parse_citations
+from app.answering.graph import AnswerState, build_graph
 from app.config import Settings
 from app.db import make_pool
-from app.domain import AnswerResult, ScoredChunk
+from app.domain import AnswerResult, Citation, ScoredChunk
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
 from app.retrieval.embeddings import make_embeddings
@@ -21,6 +22,11 @@ from app.retrieval.retriever import Retriever
 from app.retrieval.search import ChunkIndex
 
 NO_ANSWER = "I don't know based on the documents I can access."
+RETRY_NOTE = (
+    "Your reply was rejected: every claim needs a citation copied from a document tag, such as "
+    "[leave-policy:1], and only the documents above may be cited. Answer again following the "
+    f"rules, or reply with exactly: {NO_ANSWER}"
+)
 PROMPT_VERSION = "answer_v1"
 _PROMPTS = Path(__file__).resolve().parent.parent / "prompts"
 
@@ -42,29 +48,16 @@ class Answerer:
         self.reranker = reranker
         self.candidates = candidates  # searched, then reranked down to top_k
         self.threshold = threshold  # best reranker score below this → No-Answer, no LLM call
+        self.graph = build_graph(self)
         template = Template((_PROMPTS / f"{PROMPT_VERSION}.md").read_text(encoding="utf-8"))
         self._system_prompt = template.substitute(no_answer=NO_ANSWER)
 
     def answer(self, question: str) -> AnswerResult:
-        retrieved = self.retrieve(question)
-        if not retrieved or (self.reranker and retrieved[0].score < self.threshold):
-            return self._no_answer(retrieved)
-
-        reply = self.chat_model.invoke(
-            [SystemMessage(self._system_prompt), HumanMessage(_user_message(question, retrieved))]
-        )
-        text = reply.text.strip()
-
-        citations = parse_citations(text)
-        if NO_ANSWER in text or not citations or not all_citations_retrieved(citations, retrieved):
-            return self._no_answer(retrieved)
-        return AnswerResult(
-            status="answered",
-            answer=text,
-            citations=citations,
-            retrieved=retrieved,
-            prompt_version=PROMPT_VERSION,
-        )
+        final = self.graph.invoke({"question": question})
+        if final["status"] == "no_answer":
+            return self._result("no_answer", NO_ANSWER, [], final["retrieved"])
+        answer, citations = final["replies"][-1], final["citations"]
+        return self._result("answered", answer, citations, final["retrieved"])
 
     def retrieve(self, question: str) -> list[ScoredChunk]:
         """The top_k chunks the LLM will see: searched directly, or reranked from candidates."""
@@ -73,11 +66,43 @@ class Answerer:
         candidates = self.index.search(question, k=self.candidates)
         return self.reranker.rerank(question, candidates, k=self.top_k)
 
-    def _no_answer(self, retrieved: list[ScoredChunk]) -> AnswerResult:
+    # --- graph steps (app/answering/graph.py wires them together) -------------------------
+
+    def retrieve_step(self, state: AnswerState) -> AnswerState:
+        return {"retrieved": self.retrieve(state["question"]), "replies": []}
+
+    def after_retrieve(self, state: AnswerState) -> str:
+        retrieved = state["retrieved"]
+        if not retrieved or (self.reranker and retrieved[0].score < self.threshold):
+            return "no_answer"  # nothing relevant: don't spend an LLM call
+        return "generate"
+
+    def generate_step(self, state: AnswerState) -> AnswerState:
+        messages = [
+            SystemMessage(self._system_prompt),
+            HumanMessage(_user_message(state["question"], state["retrieved"])),
+        ]
+        if state["replies"]:  # a retry: show the rejected reply and say why
+            messages += [AIMessage(state["replies"][-1]), HumanMessage(RETRY_NOTE)]
+        reply = self.chat_model.invoke(messages)
+        return {"replies": [*state["replies"], reply.text.strip()]}
+
+    def check_step(self, state: AnswerState) -> AnswerState:
+        text = state["replies"][-1]
+        if NO_ANSWER in text:
+            return {"status": "no_answer"}  # the model's own refusal is final
+        citations = parse_citations(text)
+        if citations and all_citations_retrieved(citations, state["retrieved"]):
+            return {"status": "answered", "citations": citations}
+        return {}  # invalid: the graph retries once, then gives a No-Answer
+
+    def _result(
+        self, status: str, answer: str, citations: list[Citation], retrieved: list[ScoredChunk]
+    ) -> AnswerResult:
         return AnswerResult(
-            status="no_answer",
-            answer=NO_ANSWER,
-            citations=[],
+            status=status,
+            answer=answer,
+            citations=citations,
             retrieved=retrieved,
             prompt_version=PROMPT_VERSION,
         )

@@ -12,6 +12,7 @@ dependencies = [
     "langchain-mistralai>=1.1.6",
     "langchain-openai>=1.7.0",
     "langchain-text-splitters>=1.1.3",
+    "langgraph>=1.2.14",
     "numpy>=2.5.4",
     "pgvector>=0.5.1",
     "psycopg-pool>=3.3.3",
