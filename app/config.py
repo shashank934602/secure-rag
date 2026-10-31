@@ -28,11 +28,13 @@ class Settings(BaseSettings):
 
     # Retrieval (spec 03 D7): dense = vector only; hybrid = vector + keyword, fused with RRF.
     top_k: int = 5
-    retrieval_mode: Literal["dense", "keyword", "hybrid"] = "dense"
+    # Defaults = the best setup in the Phase 3 eval (hybrid + rerank: MRR 1.000 vs 0.917 dense).
+    # The in-memory index (no DATABASE_URL) is dense only.
+    retrieval_mode: Literal["dense", "keyword", "hybrid"] = "hybrid"
     candidates: int = 20  # per search list before fusion, and the number reranked
     # Reranking (spec 03 D4–D5): a local cross-encoder picks top_k of the candidates; if the
     # best score is below the threshold, the answer is No-Answer without calling the LLM.
-    rerank: bool = False
+    rerank: bool = True
     reranker_model: str = "BAAI/bge-reranker-base"
     rerank_threshold: float = 0.0
 

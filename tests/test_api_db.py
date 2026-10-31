@@ -21,7 +21,9 @@ pytestmark = pytest.mark.db
 
 def test_ask_and_healthz_end_to_end(pg: PgUrls, tmp_path: Path) -> None:
     (tmp_path / "leave-policy.md").write_text("Annual leave is 25 days.")
-    settings = Settings(corpus_dir=tmp_path, embedding_model="fake:counting", database_url=pg.app)
+    settings = Settings(
+        corpus_dir=tmp_path, embedding_model="fake:counting", database_url=pg.app, rerank=False
+    )
     with connect(pg.app, autocommit=True) as conn:
         conn.execute("DELETE FROM documents")
         ingest_folder(conn, settings, CountingEmbeddings())

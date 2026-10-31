@@ -25,7 +25,9 @@ QUESTION = "How much leave do I get?"
 def settings(pg: PgUrls, tmp_path: Path) -> Iterator[Settings]:
     (tmp_path / "leave-policy.md").write_text("Annual leave is 25 days.")
     (tmp_path / "expense-policy.md").write_text("Hotel limit is 190 pounds.")
-    settings = Settings(corpus_dir=tmp_path, embedding_model="fake:counting", database_url=pg.app)
+    settings = Settings(
+        corpus_dir=tmp_path, embedding_model="fake:counting", database_url=pg.app, rerank=False
+    )
     with connect(pg.app, autocommit=True) as conn:
         conn.execute("DELETE FROM documents")
         ingest_folder(conn, settings, CountingEmbeddings())

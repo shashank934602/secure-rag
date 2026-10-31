@@ -1,7 +1,9 @@
 """Run the golden set through the API and score it (spec 02 step 8, ISS-026).
 
-    uv run python -m eval.run                   # report → eval/reports/<time>.json (not committed)
-    uv run python -m eval.run --save-baseline   # also → eval/baselines/phase2.json (committed)
+    uv run python -m eval.run                          # report → eval/reports/<time>.json
+    uv run python -m eval.run --save-baseline phase3   # also → eval/baselines/phase3.json
+
+Retrieval settings come from the environment, e.g. RETRIEVAL_MODE=hybrid RERANK=true.
 
 Answers go through the real API in-process (FastAPI test client), with the real models and the
 database; retrieval metrics come from the same answerer's retriever, since the API doesn't return
@@ -27,7 +29,7 @@ from eval.metrics import QuestionResult, key_fact_score, recall_at_k, reciprocal
 
 GOLDEN = ROOT / "eval" / "datasets" / "golden.jsonl"
 REPORTS = ROOT / "eval" / "reports"
-BASELINE = ROOT / "eval" / "baselines" / "phase2.json"
+BASELINES = ROOT / "eval" / "baselines"
 
 
 def load_golden(path: Path = GOLDEN) -> list[dict]:
@@ -142,7 +144,9 @@ def _print(results: list[QuestionResult], report: dict, k: int) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m eval.run", description=__doc__.split("\n")[0])
-    parser.add_argument("--save-baseline", action="store_true", help=f"also write {BASELINE.name}")
+    parser.add_argument(
+        "--save-baseline", metavar="NAME", help="also write eval/baselines/NAME.json (committed)"
+    )
     parser.add_argument("--pause", type=float, default=1.0, help="seconds between questions")
     args = parser.parse_args(argv)
 
@@ -154,9 +158,10 @@ def main(argv: list[str] | None = None) -> int:
     _print(results, report, settings.top_k)
     print(f"\nreport: {write_report(report).relative_to(ROOT)}")
     if args.save_baseline:
-        BASELINE.parent.mkdir(parents=True, exist_ok=True)
-        BASELINE.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
-        print(f"baseline: {BASELINE.relative_to(ROOT)}")
+        baseline = BASELINES / f"{args.save_baseline}.json"
+        baseline.parent.mkdir(parents=True, exist_ok=True)
+        baseline.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+        print(f"baseline: {baseline.relative_to(ROOT)}")
     return 1 if report["errors"] else 0
 
 
