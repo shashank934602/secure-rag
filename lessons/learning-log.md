@@ -500,4 +500,9 @@ loaded this log automatically, so the rule survived the new session.
 - Real result, mixed: g17's handbook went **7th → 1st** ("gift", "declare" match exactly), but the org chart went **down** (g06 6th → 10th). It's a **two-hop** page: the question asks "who owns the contract", the contract says "Head of Procurement", and only the org chart names her. The question's words don't describe that page.
 - Lesson: a technique that's "usually better" can hurt specific cases. Measure per question, not only on average.
 
-**Next session starts with:** S2, the reranker.
+**Update — S2 reranker (ISS-031, ISS-034):**
+- A **cross-encoder** reads the question and a chunk *together* and scores relevance 0–1. It's sharper than embeddings: leave question vs hotel chunk 0.00, vs leave chunk 0.72; embedding similarity for irrelevant chunks was still about 0.69. It runs on the Mac (MPS), so no text leaves the machine. First download ~1 GB, 5 minutes.
+- **Calibration found no clean threshold:** answerable questions' best scores go as low as 0.049 (g13), and unanswerable ones as high as 0.479 (g10). The threshold stays off; the LLM's rule still handles "I don't know". Lesson: reranker scores **rank** well but aren't calibrated probabilities.
+- Ranking: every answerable question's main page is in the top 5 after reranking; the org chart (two-hop) is still missed for g06 and g17.
+
+**Next session starts with:** S3, the LangGraph flow.

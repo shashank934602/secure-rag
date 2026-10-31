@@ -15,6 +15,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Local cross-encoder reranker (`BAAI/bge-reranker-base` via `sentence-transformers`) behind a `Reranker` protocol; `Answerer` reranks candidates to top-k, with an optional relevance threshold that returns No-Answer without calling the LLM; settings `rerank`, `reranker_model`, `rerank_threshold`; eval reports record retrieval settings (ISS-031).
 - Keyword search (migration `0002`: generated `content_tsv` + GIN index) and hybrid search fused with Reciprocal Rank Fusion; `PgRetriever(mode=dense|keyword|hybrid)`, `Settings.retrieval_mode`, `candidates` (ISS-030).
 
 ## [0.2.0] — 2026-10-30 — Phase 2: Postgres, API, and a baseline eval
