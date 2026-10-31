@@ -461,3 +461,37 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear / open questions:** the study agenda items, which the second chat now covers.
 
 **Next session starts with:** Phase 3 kickoff (better retrieval: keyword + vector search, reranking), aiming to fix g06/g17 without losing anything else. The study chat works through the agenda in parallel.
+
+## 2026-10-31 — Codebase walkthrough before Phase 3
+
+**Where we are:** Phase 2 is released (`v0.2.0`); Phase 3 (better retrieval) has not started. Offline tests: 90 pass, ruff clean.
+
+**What we learned:**
+- The whole request path today is one straight line: question → embed it → one SQL query (tenant + active + role filter, closest by cosine) → top 5 chunks → LLM with the `answer_v1` prompt → parse citations → either an answer with valid citations, or the No-Answer.
+- The answerer only knows the `Retriever` interface (`search(question, k)`), so Phase 3 can replace *how* chunks are found without touching how answers are checked.
+- g06 and g17 are both two-hop questions: the first document names a role ("Head of Procurement"), and only the org chart has that person's email. The org chart doesn't sound like the question, so vector search alone misses it.
+
+**How we learned it:** read `plan.md`, the trackers, `docs/architecture.md` §11 (invariants), and the code in `app/answering`, `app/retrieval`, `app/main.py`, the migration; ran the offline tests.
+
+**What I can now explain:** pending.
+
+**Still unclear / open questions:** none new.
+
+**Next session starts with:** Phase 3 kickoff: agree decisions and write spec 03 (keyword search + RRF, reranker, LangGraph, three-way eval).
+
+---
+
+## 2026-10-31 — Phase 3 kickoff: why the org chart is missed
+
+**Where we are:** Phase 3 (better retrieval + LangGraph). Spec 03 written; slices S1–S4 (ISS-030 … ISS-033).
+
+**What we learned:**
+- **Diagnose before fixing:** the "missing" pages aren't far away. In dense search, g06's org chart ranks **6th** and g17's handbook **7th**, just below the top-5 cut.
+- So the plan: cast a **wider net** (20 candidates from meaning search + keyword search, combined with **RRF**), then let a **reranker** (a model that reads question and chunk *together*) choose the best 5, and say "I don't know" early when even the best is irrelevant.
+- New glossary terms before code: keyword search, hybrid search, RRF, reranker, relevance threshold.
+
+**How we learned it:** measured the dense rank of every expected page for the two failing questions.
+
+**What I can now explain:** pending (study chat).
+
+**Next session starts with:** S1, keyword search + hybrid fusion.

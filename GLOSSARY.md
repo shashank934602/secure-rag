@@ -59,8 +59,28 @@ A unique string planted in one tenant's test documents that must never appear in
 
 ## Answering
 
+**Keyword search**:
+Finding chunks that contain the question's words (Postgres full text, `content_tsv`); good at exact names and rare terms.
+_Avoid_: text search, grep
+
+**Hybrid search**:
+Dense (meaning) search and keyword search run together, their ranked lists combined with Reciprocal Rank Fusion.
+_Avoid_: combined search
+
+**RRF (Reciprocal Rank Fusion)**:
+Combines ranked lists by summing 1 / (60 + rank) per chunk, so a chunk ranked well by either search rises; scores aren't compared directly.
+_Avoid_: score averaging
+
 **Candidate**:
 A chunk returned by hybrid search, before reranking.
+
+**Reranker**:
+A cross-encoder model that reads the question and a candidate together and scores relevance 0–1; more precise than embeddings, too slow for the whole corpus.
+_Avoid_: re-scorer, ranker
+
+**Relevance threshold**:
+The minimum best reranker score for the system to try answering; below it, the answer is a No-Answer without calling the LLM.
+_Avoid_: cutoff, confidence
 
 **Citation**:
 A reference `[doc_id:page]` in an answer that must point to a chunk retrieved for that request.
