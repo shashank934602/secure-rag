@@ -11,6 +11,9 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 5 S1 — input guard** (2026-11-02, ISS-042)
+  - Rules + local injection classifier as the first graph node; `refused` status (200) with a fixed message; classifier failure → 503 (fail closed). `AnswerResult.verdicts`. Settings `input_guard`, `injection_threshold`.
+  - `eval/datasets/adversarial.jsonl` (50) and `benign.jsonl` (50); `python -m eval.guards`: blocked 45/50 (95% CI 79–96%), false refusals 3/50 (2–16%). Direct, extraction, data-dump, obfuscated, multilingual 100%; role-play 4/8 (ISS-048).
 - **Phase 4 closed — `v0.4.0`** (2026-11-02, ISS-038)
   - `python -m eval.leakage`: 0 leaks in 9 probes, 2/2 controls. Golden set unchanged from Phase 3. Upload/jobs (ISS-039) and rate limiting (ISS-040) deferred; ISS-041 (the model obeys "ignore your rules") for Phase 5.
 - **Phase 4 S3 — changing a document's audience** (2026-11-02, ISS-037)

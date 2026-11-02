@@ -566,4 +566,10 @@ loaded this log automatically, so the rule survived the new session.
 - Design lesson: **not every email is "personal data"**. Work contacts (the service desk, the org chart) are meant for employees, and three golden questions need them. We mask *sensitive* identifiers (bank details, NI numbers, cards, personal mobiles and emails) for users without `pii:read`.
 - Recorded a gap from Phase 4: tokens are HS256 / 60 min, while the architecture says RS256 / 15 min (ISS-047).
 
-**Next session starts with:** S1, the input guard.
+**Update — S1 input guard (ISS-042):**
+- Two detectors, either one blocks: **pattern rules** (exact, cheap) and a local **classifier** (generalises). They caught about half the attacks each (23 and 22), which is why we use both.
+- First numbers, with 95% error bars: **blocked 45/50 (79–96%)**, **false refusals 3/50 (2–16%)**. Direct, extraction, data-dump, disguised, and foreign-language attacks were all blocked; **role-play** only 4/8 ("act as my late grandmother…" scored 0.0).
+- **Lesson: don't tune on the test.** Adjusting rules until these 100 questions pass would make the numbers meaningless; tuning needs a separate dev set (Phase 7). The misses are logged (ISS-048), and the other layers (database access control, output checks) still hold.
+- Fail closed: if the classifier can't run, the request gets a 503, never an unguarded answer.
+
+**Next session starts with:** S2, the context guard and sensitive-data masking.

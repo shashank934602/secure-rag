@@ -13,6 +13,11 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- Input guard: pattern rules + local prompt-injection classifier (`protectai/deberta-v3-base-prompt-injection-v2`); attacks are refused (`status: refused`) before any search or LLM call; a failing guard returns 503 (ISS-041, ISS-042).
+- Adversarial (50) and benign (50) sets; `python -m eval.guards` reports block and false-refusal rates with 95% Wilson intervals: 45/50 blocked, 3/50 falsely refused (ISS-042, ISS-048).
+
 ## [0.4.0] — 2026-11-02 — Phase 4: auth, tenants, and access control
 
 Phase 4 checks pass: with no `WHERE tenant_id`, row-level security still returns only the scoped tenant's rows;
