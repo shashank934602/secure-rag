@@ -1,4 +1,8 @@
-"""The answering flow as a LangGraph state machine (spec 03 D6, ISS-032).
+"""The answering flow as a LangGraph state machine (spec 03 D6; guards: spec 05 D8).
+
+    input_guard ──(attack)──────────────────────────────────▶ refused ─▶ END
+       │
+       ▼
 
     retrieve ──(nothing relevant)──────────────────────────▶ no_answer ─▶ END
        │
@@ -17,7 +21,7 @@ from typing import TYPE_CHECKING, Literal, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.domain import AccessScope, Citation, ScoredChunk
+from app.domain import AccessScope, Citation, GuardVerdict, ScoredChunk
 
 if TYPE_CHECKING:
     from app.answering.answer import Answerer
@@ -31,17 +35,24 @@ class AnswerState(TypedDict, total=False):
     retrieved: list[ScoredChunk]
     replies: list[str]  # every model reply, in order
     citations: list[Citation]
-    status: Literal["answered", "no_answer"]  # unset while the flow is still deciding
+    verdicts: list[GuardVerdict]  # every guard decision so far, in order
+    status: Literal["answered", "no_answer", "refused"]  # unset while still deciding
 
 
 def build_graph(answerer: "Answerer") -> CompiledStateGraph:
     graph = StateGraph(AnswerState)
+    graph.add_node("input_guard", answerer.input_guard_step)
+    graph.add_node("refused", lambda state: {"status": "refused", "citations": []})
     graph.add_node("retrieve", answerer.retrieve_step)
     graph.add_node("generate", answerer.generate_step)
     graph.add_node("check_citations", answerer.check_step)
     graph.add_node("no_answer", lambda state: {"status": "no_answer", "citations": []})
 
-    graph.add_edge(START, "retrieve")
+    graph.add_edge(START, "input_guard")
+    graph.add_conditional_edges(
+        "input_guard", _after_input_guard, {"refused": "refused", "retrieve": "retrieve"}
+    )
+    graph.add_edge("refused", END)
     graph.add_conditional_edges(
         "retrieve", answerer.after_retrieve, {"generate": "generate", "no_answer": "no_answer"}
     )
@@ -53,6 +64,11 @@ def build_graph(answerer: "Answerer") -> CompiledStateGraph:
     )
     graph.add_edge("no_answer", END)
     return graph.compile()
+
+
+def _after_input_guard(state: AnswerState) -> Literal["refused", "retrieve"]:
+    verdicts = state.get("verdicts") or []
+    return "refused" if verdicts and verdicts[-1].decision == "BLOCK" else "retrieve"
 
 
 def _after_check(state: AnswerState) -> Literal["answered", "retry", "no_answer"]:

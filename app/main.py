@@ -62,7 +62,7 @@ class AskResponse(BaseModel):
     answer: str
     citations: list[CitationOut]
     request_id: str
-    status: Literal["answered", "no_answer"]
+    status: Literal["answered", "no_answer", "refused"]
 
 
 def _build_from_settings() -> Answerer:

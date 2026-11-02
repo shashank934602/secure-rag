@@ -36,7 +36,11 @@ def _token(pg: PgUrls, email: str) -> str:
 def two_companies(pg: PgUrls, tmp_path: Path) -> Settings:
     """Aldermoor and Northgate each get a leave policy that answers the same question."""
     settings = Settings(
-        corpus_dir=tmp_path, embedding_model="fake:keyword", database_url=pg.app, rerank=False
+        corpus_dir=tmp_path,
+        embedding_model="fake:keyword",
+        database_url=pg.app,
+        rerank=False,
+        input_guard=False,
     )
     with connect(pg.app, autocommit=True) as conn:
         for tenant, name, text in (

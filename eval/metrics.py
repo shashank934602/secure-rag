@@ -96,3 +96,15 @@ def summarise(results: list[QuestionResult], k: int = 5) -> dict[str, float | in
         "latency_p50_s": percentile(latencies, 50),
         "latency_p95_s": percentile(latencies, 95),
     }
+
+
+def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """95% confidence interval for a rate (Wilson score). With few cases it stays wide:
+    50/50 blocked means "at least about 93%", not "100%"."""
+    if n <= 0:
+        raise ValueError("wilson_interval needs at least one case")
+    p = successes / n
+    denominator = 1 + z**2 / n
+    centre = (p + z**2 / (2 * n)) / denominator
+    margin = z * ((p * (1 - p) / n + z**2 / (4 * n**2)) ** 0.5) / denominator
+    return max(0.0, centre - margin), min(1.0, centre + margin)

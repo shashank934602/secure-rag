@@ -26,7 +26,11 @@ def settings(pg: PgUrls, tmp_path: Path) -> Iterator[Settings]:
     (tmp_path / "leave-policy.md").write_text("Annual leave is 25 days.")
     (tmp_path / "expense-policy.md").write_text("Hotel limit is 190 pounds.")
     settings = Settings(
-        corpus_dir=tmp_path, embedding_model="fake:counting", database_url=pg.app, rerank=False
+        corpus_dir=tmp_path,
+        embedding_model="fake:counting",
+        database_url=pg.app,
+        rerank=False,
+        input_guard=False,
     )
     with connect(pg.app, autocommit=True) as conn:
         act_as(conn)

@@ -49,14 +49,26 @@ class Citation(BaseModel):
         return f"{self.doc_id}:{self.page}"
 
 
-class AnswerResult(BaseModel):
-    """The outcome of answering one question: a grounded answer with citations, or a No-Answer."""
+class GuardVerdict(BaseModel):
+    """A guard's decision at one point in the flow (GLOSSARY: Guard verdict)."""
 
-    status: Literal["answered", "no_answer"]
+    model_config = ConfigDict(frozen=True)
+
+    guard: str  # "input", "context", "output", "grounding"
+    decision: Literal["ALLOW", "BLOCK", "DROP", "MASK", "PASS", "FAIL"]
+    score: float | None = None
+    reason: str = ""
+
+
+class AnswerResult(BaseModel):
+    """The outcome of answering one question: a grounded answer, a No-Answer, or a Refusal."""
+
+    status: Literal["answered", "no_answer", "refused"]
     answer: str
     citations: list[Citation]
     retrieved: list[ScoredChunk]
     prompt_version: str
+    verdicts: list[GuardVerdict] = []  # every guard decision, in order (Phase 6 audits them)
 
 
 class AccessScope(BaseModel):

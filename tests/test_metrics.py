@@ -11,6 +11,7 @@ from eval.metrics import (
     recall_at_k,
     reciprocal_rank,
     summarise,
+    wilson_interval,
 )
 
 # --- recall@k: share of the expected pages found in the top k -----------------------------------
@@ -169,3 +170,21 @@ def test_summary_of_a_small_run() -> None:
     assert s["no_answer_accuracy"] == 1.0
     assert s["latency_p50_s"] == pytest.approx(2.5)
     assert s["latency_p95_s"] == pytest.approx(3.85)
+
+
+# --- Wilson interval: honest error bars for a rate (Phase 5, ISS-042) ----------------------------
+
+
+def test_wilson_interval_for_45_of_50() -> None:
+    low, high = wilson_interval(45, 50)
+    assert (round(low, 3), round(high, 3)) == (0.786, 0.957)
+
+
+def test_wilson_interval_never_claims_certainty_from_a_small_sample() -> None:
+    low, high = wilson_interval(50, 50)  # a perfect score on 50 cases
+    assert high == 1.0 and round(low, 3) == 0.929  # still only "at least ~93%"
+
+
+def test_wilson_interval_needs_cases() -> None:
+    with pytest.raises(ValueError):
+        wilson_interval(0, 0)

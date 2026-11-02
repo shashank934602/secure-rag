@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     reranker_model: str = "BAAI/bge-reranker-base"
     rerank_threshold: float = 0.0
 
+    # Guards (spec 05). The input guard refuses injection attempts before any search or LLM call.
+    input_guard: bool = True
+    injection_threshold: float = 0.5
+
     # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
     database_url: str = ""
     database_admin_url: str = ""
