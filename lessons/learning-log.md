@@ -519,3 +519,21 @@ loaded this log automatically, so the rule survived the new session.
 - Defaults now hybrid + rerank; the reranker loads on first use. Baseline `eval/baselines/phase3.json`.
 
 **Next session starts with:** Phase 4, login, roles, and per-company isolation (row-level security).
+
+---
+
+## 2026-11-02 — Phase 4 kickoff: making leaks impossible
+
+**Where we are:** Phase 4 (auth, tenants, access control). Spec 04 written; slices S1–S4 (ISS-035 … ISS-038). Upload/jobs (ISS-039) and rate limiting (ISS-040) are deferred.
+
+**What we learned:**
+- The goal is that leaking is **impossible by construction**, not just unlikely: the *database* hides other companies' rows (row-level security), so even a bug that forgets `WHERE tenant_id` can't leak.
+- Roles (which documents you can read) vs permissions (what you can do, such as `uploader`).
+- Tokens say *who you are*; roles are looked up fresh on every request, so removing a role works immediately.
+- New glossary terms before code: row-level security, tenant scope, access scope, access token.
+
+**How we learned it:** read the plan, ADR-0002, and the threat model, then chose the security core and deferred the plumbing.
+
+**What I can now explain:** pending (study chat).
+
+**Next session starts with:** S1, RLS + second tenant + canaries.

@@ -20,6 +20,22 @@ _Avoid_: scope, right
 The tenant plus the set of roles allowed to read a document.
 _Avoid_: sharing settings, visibility
 
+**Row-level security (RLS)**:
+A Postgres rule on a table that hides every row whose `tenant_id` isn't the current tenant scope, whatever the query says.
+_Avoid_: row filter, permission check
+
+**Tenant scope**:
+The tenant a database transaction runs as (`SET LOCAL app.tenant_id`); with none set, tenant tables return no rows.
+_Avoid_: tenant context, session tenant
+
+**Access scope**:
+The tenant id plus the asking user's roles; every search is limited to chunks inside it.
+_Avoid_: filter, user context
+
+**Access token**:
+A signed JWT naming a user and their tenant, sent as `Authorization: Bearer …`; roles are looked up in the database, not read from it.
+_Avoid_: session, API key
+
 ## Knowledge base
 
 **Document**:
