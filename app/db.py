@@ -66,3 +66,13 @@ def tenant_scope(conn: psycopg.Connection, tenant_id: object) -> Iterator[psycop
     with conn.transaction():
         conn.execute("SELECT set_config('app.tenant_id', %s, true)", (str(tenant_id),))
         yield conn
+
+
+@contextmanager
+def borrow(db: psycopg.Connection | ConnectionPool) -> Iterator[psycopg.Connection]:
+    """Use one connection (tests, CLI) as is, or borrow a checked one from a pool (the API)."""
+    if isinstance(db, ConnectionPool):
+        with db.connection() as conn:  # checked alive, returned to the pool afterwards
+            yield conn
+    else:
+        yield db

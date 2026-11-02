@@ -12,8 +12,6 @@ Rules, each one a test in tests/test_pg_search.py:
 """
 
 import re
-from collections.abc import Iterator
-from contextlib import contextmanager
 from typing import Literal
 
 import numpy as np
@@ -21,7 +19,7 @@ import psycopg
 from langchain_core.embeddings import Embeddings
 from psycopg_pool import ConnectionPool
 
-from app.db import tenant_scope
+from app.db import borrow, tenant_scope
 from app.domain import AccessScope, Chunk, ScoredChunk
 from app.retrieval.fusion import rrf_fuse
 
@@ -84,20 +82,12 @@ class PgRetriever:
         self._embeddings = embeddings
         self._mode = mode
         self._candidates = candidates  # per list, before hybrid fusion
-        with self._connection() as conn:
+        with borrow(self._db) as conn:
             row = conn.execute("SELECT id FROM tenants WHERE name = %s", (tenant,)).fetchone()
         if row is None:
             raise ValueError(f"Tenant {tenant!r} not found")
         # Used when a caller passes no scope (the CLI and eval); the API always passes the user's.
         self.default_scope = AccessScope(tenant_id=str(row[0]), roles=roles)
-
-    @contextmanager
-    def _connection(self) -> Iterator[psycopg.Connection]:
-        if isinstance(self._db, ConnectionPool):
-            with self._db.connection() as conn:  # checked alive, returned to the pool after
-                yield conn
-        else:
-            yield self._db
 
     def search(self, question: str, k: int, scope: AccessScope | None = None) -> list[ScoredChunk]:
         scope = scope or self.default_scope
@@ -123,7 +113,7 @@ class PgRetriever:
         # Two locks on the same door: the query's own WHERE, and row-level security via the
         # tenant scope, which still holds if a query ever forgets its WHERE (Invariant 1).
         params = {**params, "tenant_id": scope.tenant_id, "roles": scope.roles}
-        with self._connection() as conn, tenant_scope(conn, scope.tenant_id):
+        with borrow(self._db) as conn, tenant_scope(conn, scope.tenant_id):
             rows = conn.execute(sql, params).fetchall()
         return [
             ScoredChunk(

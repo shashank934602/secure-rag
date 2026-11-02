@@ -66,3 +66,19 @@ class AccessScope(BaseModel):
 
     tenant_id: str
     roles: list[str]
+
+
+class User(BaseModel):
+    """An authenticated user. Roles and permissions are read from the database on every request."""
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    tenant_id: str
+    email: str
+    roles: list[str]  # which documents they can read
+    permissions: list[str]  # what they can do, e.g. "uploader"
+
+    @property
+    def scope(self) -> AccessScope:
+        return AccessScope(tenant_id=self.tenant_id, roles=self.roles)

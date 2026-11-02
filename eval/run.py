@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 
 from app.answering.answer import PROMPT_VERSION, Answerer, build_db_answerer
 from app.config import ROOT, Settings, get_settings
+from app.domain import User
 from app.main import create_app
 from eval.metrics import QuestionResult, key_fact_score, recall_at_k, reciprocal_rank, summarise
 
@@ -47,9 +48,19 @@ def evaluate(
     clock: Callable[[], float] = time.perf_counter,
 ) -> list[QuestionResult]:
     """Ask every question through the API; record what was retrieved, the answer, and the time."""
-    app = create_app(build=lambda: answerer, health_check=lambda: None)
+    scope = getattr(answerer.index, "default_scope", None)  # Postgres: settings tenant + roles
+    user = User(
+        id="eval",
+        tenant_id=scope.tenant_id if scope else "",
+        email="eval@localhost",
+        roles=scope.roles if scope else [],
+        permissions=[],
+    )
+    app = create_app(
+        build=lambda: answerer, health_check=lambda: None, authenticator=lambda: lambda _: user
+    )
     results = []
-    with TestClient(app) as client:
+    with TestClient(app, headers={"Authorization": "Bearer eval"}) as client:
         for row in rows:
             hits = answerer.retrieve(row["question"])  # what the LLM sees (reranked if on)
             retrieved = [f"{hit.chunk.doc_id}:{hit.chunk.page}" for hit in hits]

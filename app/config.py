@@ -41,8 +41,12 @@ class Settings(BaseSettings):
     # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
     database_url: str = ""
     database_admin_url: str = ""
-    tenant: str = "Aldermoor"  # the one seeded tenant until auth arrives (Phase 4)
-    roles: list[str] = ["employee"]  # the asking user's roles until auth arrives (Phase 4)
+    tenant: str = "Aldermoor"  # the CLI, eval, and ingest default; the API uses the token's tenant
+    roles: list[str] = ["employee"]  # CLI and eval scope; the API uses the logged-in user's roles
+
+    # Access tokens (spec 04 D5): HS256-signed JWTs; the secret lives only in .env.
+    jwt_secret: str = ""
+    token_ttl_s: int = 3600
 
 
 @lru_cache
