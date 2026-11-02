@@ -4,13 +4,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 4 — auth, tenants, and access control** (`context/feature-specs/04-auth-tenants-access-control.md`): spec written 2026-11-02, slices S1–S4 (ISS-035 … ISS-038); upload/jobs and rate limiting deferred (ISS-039, ISS-040). **Phase 3 done: released `v0.3.0` on 2026-10-31** (hybrid + rerank by default; baseline `eval/baselines/phase3.json`). Phase 2 `v0.2.0` 2026-10-30; Phase 1 `v0.1.0` 2026-10-19.
+**Phase 5 — guardrails** (not started). **Phase 4 done: released `v0.4.0` on 2026-11-02**: RLS, tokens, ACL changes, 0 leaks. Phase 3 `v0.3.0` 2026-10-31; Phase 2 `v0.2.0` 2026-10-30; Phase 1 `v0.1.0` 2026-10-19.
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 4 closed — `v0.4.0`** (2026-11-02, ISS-038)
+  - `python -m eval.leakage`: 0 leaks in 9 probes, 2/2 controls. Golden set unchanged from Phase 3. Upload/jobs (ISS-039) and rate limiting (ISS-040) deferred; ISS-041 (the model obeys "ignore your rules") for Phase 5.
 - **Phase 4 S3 — changing a document's audience** (2026-11-02, ISS-037)
   - `PATCH /v1/documents/{doc_id}/acl` → `change_acl` (403 without `uploader`, 404 for another tenant's document, 422 for unknown roles); document and chunks updated in one transaction (Invariant 2 tested with a forced failure). The API's database pool opens on first use. 75 db tests.
 - **Phase 4 S2 — login with tokens** (2026-11-02, ISS-036)

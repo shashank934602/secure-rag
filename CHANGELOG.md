@@ -13,8 +13,17 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-11-02 — Phase 4: auth, tenants, and access control
+
+Phase 4 checks pass: with no `WHERE tenant_id`, row-level security still returns only the scoped tenant's rows;
+`python -m eval.leakage` finds **0 leaks** in 9 probes (cross-tenant, cross-role, canary requests, an injection) with
+2/2 positive controls; the golden set scores exactly as in Phase 3 (recall@5 0.929, MRR 1.000, key facts 0.857,
+12/14 answered, 6/6 No-Answer). Tests: 126 offline, 75 db, 4 live. Deferred: upload + jobs (ISS-039), rate
+limiting (ISS-040). The learner's explain-back is pending (build now, study later).
+
 ### Added
 
+- Leakage check `python -m eval.leakage`: probes as an Aldermoor employee for Northgate and HR-only data, fails on any canary or forbidden document in sources or answers, with positive controls; Phase 4 baseline `eval/baselines/phase4.json`; `lessons/04-access-control.md` (ISS-038).
 - `PATCH /v1/documents/{doc_id}/acl`: change who can read a document (needs the `uploader` permission); document and chunks change in one transaction; another tenant's document is a 404 (ISS-037).
 
 ### Changed
