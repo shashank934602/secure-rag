@@ -13,6 +13,7 @@ from app.answering.graph import AnswerState, build_graph
 from app.config import Settings
 from app.db import make_pool
 from app.domain import AccessScope, AnswerResult, Citation, GuardVerdict, ScoredChunk
+from app.guards.context import ContextGuard
 from app.guards.injection import DebertaInjectionClassifier, InputGuard
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
@@ -44,6 +45,7 @@ class Answerer:
         candidates: int = 20,
         threshold: float = 0.0,
         input_guard: InputGuard | None = None,
+        context_guard: ContextGuard | None = None,
     ) -> None:
         self.index = index
         self.chat_model = chat_model
@@ -52,6 +54,7 @@ class Answerer:
         self.candidates = candidates  # searched, then reranked down to top_k
         self.threshold = threshold  # best reranker score below this → No-Answer, no LLM call
         self.input_guard = input_guard  # None only in unit tests; the app always has one
+        self.context_guard = context_guard
         self.graph = build_graph(self)
         template = Template((_PROMPTS / f"{PROMPT_VERSION}.md").read_text(encoding="utf-8"))
         self._system_prompt = template.substitute(no_answer=NO_ANSWER)
@@ -84,7 +87,13 @@ class Answerer:
     def retrieve_step(self, state: AnswerState) -> AnswerState:
         return {"retrieved": self.retrieve(state["question"], state.get("scope")), "replies": []}
 
-    def after_retrieve(self, state: AnswerState) -> str:
+    def context_guard_step(self, state: AnswerState) -> AnswerState:
+        if self.context_guard is None:
+            return {}
+        kept, verdicts = self.context_guard.check(state["retrieved"], state.get("scope"))
+        return {"retrieved": kept, "verdicts": [*state["verdicts"], *verdicts]}
+
+    def after_context(self, state: AnswerState) -> str:
         retrieved = state["retrieved"]
         if not retrieved or (self.reranker and retrieved[0].score < self.threshold):
             return "no_answer"  # nothing relevant: don't spend an LLM call
@@ -143,6 +152,7 @@ def build_answerer(
     retriever: Retriever | None = None,
     reranker: Reranker | None = None,
     input_guard: InputGuard | None = None,
+    context_guard: ContextGuard | None = None,
 ) -> Answerer:
     """Create the answerer: the given retriever, or an in-memory index over the corpus
     (loaded, chunked, and embedded on every start), plus the chat model named in settings."""
@@ -160,8 +170,12 @@ def build_answerer(
     )
     if reranker is None and settings.rerank:
         reranker = CrossEncoderReranker(settings.reranker_model)
-    if input_guard is None and settings.input_guard:
-        input_guard = InputGuard(DebertaInjectionClassifier(), settings.injection_threshold)
+    # One local classifier serves the input guard (questions) and the context guard (chunks).
+    classifier = DebertaInjectionClassifier() if settings.input_guard else None
+    if input_guard is None and classifier is not None:
+        input_guard = InputGuard(classifier, settings.injection_threshold)
+    if context_guard is None and settings.context_guard:
+        context_guard = ContextGuard(classifier, settings.injection_threshold)
     return Answerer(
         index=retriever,
         chat_model=model,
@@ -170,6 +184,7 @@ def build_answerer(
         candidates=settings.candidates,
         threshold=settings.rerank_threshold,
         input_guard=input_guard,
+        context_guard=context_guard,
     )
 
 

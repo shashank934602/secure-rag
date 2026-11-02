@@ -4,8 +4,8 @@
        │
        ▼
 
-    retrieve ──(nothing relevant)──────────────────────────▶ no_answer ─▶ END
-       │
+    retrieve ─▶ context_guard ──(nothing relevant or left)────▶ no_answer ─▶ END
+       │      (drop injected chunks, mask personal data)
        ▼
     generate ─▶ check_citations ──(valid)───────────────────────────────▶ END
        ▲               │
@@ -44,6 +44,7 @@ def build_graph(answerer: "Answerer") -> CompiledStateGraph:
     graph.add_node("input_guard", answerer.input_guard_step)
     graph.add_node("refused", lambda state: {"status": "refused", "citations": []})
     graph.add_node("retrieve", answerer.retrieve_step)
+    graph.add_node("context_guard", answerer.context_guard_step)
     graph.add_node("generate", answerer.generate_step)
     graph.add_node("check_citations", answerer.check_step)
     graph.add_node("no_answer", lambda state: {"status": "no_answer", "citations": []})
@@ -53,8 +54,11 @@ def build_graph(answerer: "Answerer") -> CompiledStateGraph:
         "input_guard", _after_input_guard, {"refused": "refused", "retrieve": "retrieve"}
     )
     graph.add_edge("refused", END)
+    graph.add_edge("retrieve", "context_guard")
     graph.add_conditional_edges(
-        "retrieve", answerer.after_retrieve, {"generate": "generate", "no_answer": "no_answer"}
+        "context_guard",
+        answerer.after_context,
+        {"generate": "generate", "no_answer": "no_answer"},
     )
     graph.add_edge("generate", "check_citations")
     graph.add_conditional_edges(

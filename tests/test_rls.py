@@ -105,6 +105,6 @@ def test_users_are_seeded_with_roles_and_permissions(pg: PgUrls) -> None:
         ).fetchall()
     assert rows == [
         ("alice@aldermoor.example.com", ["employee"], []),
-        ("harriet@aldermoor.example.com", ["employee", "hr"], ["uploader"]),
+        ("harriet@aldermoor.example.com", ["employee", "hr"], ["uploader", "pii:read"]),
         ("ned@northgate.example.com", ["employee"], []),
     ]

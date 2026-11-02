@@ -26,6 +26,8 @@ from langchain_core.embeddings import Embeddings
 from app.config import Settings, get_settings
 from app.db import connect, tenant_scope
 from app.domain import Page
+from app.guards.injection import DebertaInjectionClassifier, InjectionClassifier
+from app.guards.pii import mask
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
 from app.retrieval.embeddings import make_embeddings
@@ -40,12 +42,14 @@ class IngestReport:
     unchanged: list[str] = field(default_factory=list)
     removed: list[str] = field(default_factory=list)
     failed: dict[str, str] = field(default_factory=dict)
+    quarantined: list[str] = field(default_factory=list)  # also in added/updated, but inactive
 
     def summary(self) -> str:
         line = (
             f"added {len(self.added)} · updated {len(self.updated)} · "
             f"unchanged {len(self.unchanged)} · removed {len(self.removed)}"
         )
+        line += f" · quarantined {len(self.quarantined)}" if self.quarantined else ""
         return line + (f" · failed {len(self.failed)}" if self.failed else "")
 
 
@@ -56,6 +60,7 @@ def ingest_folder(
     *,
     allowed_roles: list[str] | None = None,
     collection: str | None = None,
+    classifier: InjectionClassifier | None = None,
 ) -> IngestReport:
     """Bring `settings.tenant`'s documents from `settings.corpus_dir` up to date.
 
@@ -94,13 +99,23 @@ def ingest_folder(
             report.unchanged.append(slug)
             continue
         try:
-            _replace_document(
-                conn, settings, embeddings, tenant_id, roles, collection, pages, content_hash
+            flagged = _replace_document(
+                conn,
+                settings,
+                embeddings,
+                classifier,
+                tenant_id,
+                roles,
+                collection,
+                pages,
+                content_hash,
             )
         except Exception as error:  # report and carry on; the transaction has rolled back
             report.failed[slug] = f"{type(error).__name__}: {error}"
             continue
         (report.updated if slug in stored else report.added).append(slug)
+        if flagged:
+            report.quarantined.append(slug)
 
     for slug in sorted(set(stored) - set(pages_by_slug)):
         with tenant_scope(conn, tenant_id):
@@ -120,19 +135,24 @@ def _replace_document(
     conn: psycopg.Connection,
     settings: Settings,
     embeddings: Embeddings,
+    classifier: InjectionClassifier | None,
     tenant_id: str,
     roles: list[str],
     collection: str,
     pages: list[Page],
     content_hash: str,
-) -> None:
+) -> bool:
+    """Store the document; returns True if it was quarantined (an injection scan hit)."""
     chunks = chunk_pages(
         pages,
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,
         encoding_name=settings.tokenizer_encoding,
     )
-    # Embed before opening the transaction: a slow network call shouldn't hold database locks.
+    # Scan and embed before opening the transaction: slow work shouldn't hold database locks.
+    pii = [mask(c.text)[1] for c in chunks]  # detected types only; the text stays raw (ADR-0004)
+    scores = [classifier.score(c.text) for c in chunks] if classifier else [None] * len(chunks)
+    flagged = any(s is not None and s >= settings.injection_threshold for s in scores)
     vectors = embeddings.embed_documents([c.text for c in chunks])
 
     with tenant_scope(conn, tenant_id):  # all of it, or none of it, as this tenant
@@ -140,20 +160,30 @@ def _replace_document(
         # been changed through the API), and its chunks copy it from the document (ADR-0002).
         (document_id, roles) = conn.execute(
             """INSERT INTO documents
-                   (tenant_id, slug, source, content_hash, allowed_roles, collection)
-               VALUES (%s, %s, %s, %s, %s, %s)
+                   (tenant_id, slug, source, content_hash, allowed_roles, collection, status)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (tenant_id, slug) DO UPDATE
                    SET source = EXCLUDED.source, content_hash = EXCLUDED.content_hash,
-                       version = documents.version + 1, ingested_at = now()
+                       status = EXCLUDED.status, version = documents.version + 1,
+                       ingested_at = now()
                RETURNING id, allowed_roles""",
-            (tenant_id, pages[0].doc_id, pages[0].source, content_hash, roles, collection),
+            (
+                tenant_id,
+                pages[0].doc_id,
+                pages[0].source,
+                content_hash,
+                roles,
+                collection,
+                "quarantined" if flagged else "active",
+            ),
         ).fetchone()
         conn.execute("DELETE FROM chunks WHERE document_id = %s", (document_id,))
         with conn.cursor() as cur:
             cur.executemany(
                 """INSERT INTO chunks (document_id, tenant_id, allowed_roles, page, chunk_index,
-                                       content, embedding, embedding_model, content_hash)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                                       content, embedding, embedding_model, content_hash,
+                                       pii_types, injection_score, is_active)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                 [
                     (
                         document_id,
@@ -165,10 +195,16 @@ def _replace_document(
                         vector,
                         settings.embedding_model,
                         hashlib.sha256(chunk.text.encode()).hexdigest(),
+                        kinds,
+                        score,
+                        not flagged,  # a quarantined document's chunks are never searched
                     )
-                    for chunk, vector in zip(chunks, vectors, strict=True)
+                    for chunk, vector, kinds, score in zip(
+                        chunks, vectors, pii, scores, strict=True
+                    )
                 ],
             )
+    return flagged
 
 
 def main(
@@ -194,11 +230,19 @@ def main(
     embeddings = embeddings or make_embeddings(settings.embedding_model)
 
     with connect(settings.database_url, autocommit=True) as conn:
+        classifier = DebertaInjectionClassifier() if settings.input_guard else None
         report = ingest_folder(
-            conn, settings, embeddings, allowed_roles=roles, collection=args.collection
+            conn,
+            settings,
+            embeddings,
+            allowed_roles=roles,
+            collection=args.collection,
+            classifier=classifier,
         )
 
     print(report.summary())
+    for slug in report.quarantined:
+        print(f"  quarantined {slug}: possible prompt injection; its chunks are not searchable")
     for slug, error in report.failed.items():
         print(f"  failed {slug}: {error}")
     return 1 if report.failed else 0

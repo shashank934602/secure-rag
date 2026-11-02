@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     # Guards (spec 05). The input guard refuses injection attempts before any search or LLM call.
     input_guard: bool = True
     injection_threshold: float = 0.5
+    # Context guard: drop injected chunks (when the classifier is on), mask personal data.
+    context_guard: bool = True
 
     # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
     database_url: str = ""

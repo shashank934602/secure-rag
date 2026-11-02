@@ -30,7 +30,7 @@ def test_a_valid_token_becomes_the_user_with_roles_from_the_database(pg: PgUrls)
     assert (user.email, user.roles, user.permissions) == (
         "harriet@aldermoor.example.com",
         ["employee", "hr"],
-        ["uploader"],
+        ["uploader", "pii:read"],  # pii:read added in migration 0004
     )
     assert user.scope.tenant_id == tenant_id and user.scope.roles == ["employee", "hr"]
 

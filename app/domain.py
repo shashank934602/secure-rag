@@ -78,6 +78,7 @@ class AccessScope(BaseModel):
 
     tenant_id: str
     roles: list[str]
+    can_read_pii: bool = False  # the `pii:read` permission: see sensitive personal data unmasked
 
 
 class User(BaseModel):
@@ -93,4 +94,6 @@ class User(BaseModel):
 
     @property
     def scope(self) -> AccessScope:
-        return AccessScope(tenant_id=self.tenant_id, roles=self.roles)
+        return AccessScope(
+            tenant_id=self.tenant_id, roles=self.roles, can_read_pii="pii:read" in self.permissions
+        )
