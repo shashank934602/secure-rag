@@ -4,6 +4,7 @@
 
     POST /v1/ask    {"question": "..."} → {answer, citations, request_id, status}
                     needs `Authorization: Bearer <token>`; answers as that user (spec 04 D6)
+    PATCH /v1/documents/{doc_id}/acl  {"allowed_roles": [...]} → who may read it (needs `uploader`)
     GET  /healthz   {"status": "ok"} when the database answers (no token)
 
 Tokens: `python -m app.auth token --tenant Aldermoor --email alice@aldermoor.example.com`.
@@ -11,21 +12,24 @@ Still bound to 127.0.0.1 until rate limiting exists (ISS-040).
 Handlers stay thin: validate input, call the answerer, shape the output.
 """
 
+import functools
 import logging
 import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, StringConstraints
+from psycopg_pool import ConnectionPool
+from pydantic import BaseModel, Field, StringConstraints
 
 from app.answering.answer import Answerer, build_db_answerer
 from app.auth import AuthError, authenticate
 from app.config import get_settings
 from app.db import connect, make_pool
+from app.documents import AclError, change_acl
 from app.domain import AnswerResult, User
 
 log = logging.getLogger(__name__)
@@ -39,6 +43,13 @@ Question = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1,
 
 class AskRequest(BaseModel):
     question: Question
+
+
+RoleName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+
+
+class AclChange(BaseModel):
+    allowed_roles: list[RoleName] = Field(min_length=1, max_length=50)
 
 
 class CitationOut(BaseModel):
@@ -66,6 +77,10 @@ def _authenticator_from_settings() -> Callable[[str], User]:
     return lambda token: authenticate(token, secret=settings.jwt_secret, db=pool)
 
 
+def _database_from_settings() -> ConnectionPool:
+    return make_pool(get_settings().database_url, name="rag-api")
+
+
 def _check_database() -> None:
     with connect(get_settings().database_url) as conn:
         conn.execute("SELECT 1")
@@ -75,8 +90,10 @@ def create_app(
     build: Callable[[], Answerer] = _build_from_settings,
     health_check: Callable[[], None] = _check_database,
     authenticator: Callable[[], Callable[[str], User]] = _authenticator_from_settings,
+    database: Callable[[], object] = _database_from_settings,
 ) -> FastAPI:
-    """Build the app. Tests pass fakes for the three parts; production uses the defaults."""
+    """Build the app. Tests pass fakes for each part; production uses the defaults."""
+    get_database = functools.cache(database)  # opened on first use, not at start-up
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -99,6 +116,21 @@ def create_app(
             log.error("ask failed request_id=%s error=%s", request_id, type(error).__name__)
             return JSONResponse(status_code=503, content={"detail": UNAVAILABLE})
         return _response(result, request_id)
+
+    @app.patch("/v1/documents/{doc_id}/acl")
+    def update_acl(
+        body: AclChange,
+        user: Annotated[User, Depends(current_user)],
+        doc_id: Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9-]{0,199}$")],
+    ) -> JSONResponse:
+        try:
+            changed = change_acl(get_database(), user, doc_id, body.allowed_roles)
+        except AclError as error:
+            return JSONResponse(status_code=error.status, content={"detail": error.detail})
+        except Exception as error:
+            log.error("acl change failed error=%s", type(error).__name__)
+            return JSONResponse(status_code=503, content={"detail": UNAVAILABLE})
+        return JSONResponse(status_code=200, content=changed)
 
     @app.get("/healthz")
     def healthz() -> JSONResponse:
