@@ -15,6 +15,7 @@ from app.db import make_pool
 from app.domain import AccessScope, AnswerResult, Citation, GuardVerdict, ScoredChunk
 from app.guards.context import ContextGuard
 from app.guards.injection import DebertaInjectionClassifier, InputGuard
+from app.guards.output import check_output
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
 from app.retrieval.embeddings import make_embeddings
@@ -108,6 +109,14 @@ class Answerer:
             messages += [AIMessage(state["replies"][-1]), HumanMessage(RETRY_NOTE)]
         reply = self.chat_model.invoke(messages)
         return {"replies": [*state["replies"], reply.text.strip()]}
+
+    def output_step(self, state: AnswerState) -> AnswerState:
+        # Structural, always on (Invariant 3): no links, images, HTML, or secrets leave the system.
+        cleaned, verdict = check_output(state["replies"][-1], state.get("scope"))
+        return {
+            "replies": [*state["replies"][:-1], cleaned],
+            "verdicts": [*state["verdicts"], verdict],
+        }
 
     def check_step(self, state: AnswerState) -> AnswerState:
         text = state["replies"][-1]

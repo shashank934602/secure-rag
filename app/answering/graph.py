@@ -7,7 +7,8 @@
     retrieve ─▶ context_guard ──(nothing relevant or left)────▶ no_answer ─▶ END
        │      (drop injected chunks, mask personal data)
        ▼
-    generate ─▶ check_citations ──(valid)───────────────────────────────▶ END
+    generate ─▶ output_checks ─▶ check_citations ──(valid)─────────────────▶ END
+             (strip links/images/HTML, redact secrets and personal data)
        ▲               │
        └──(invalid, first time: retry with a correction note)
                        └──(invalid again, or the model said "I don't know")─▶ no_answer ─▶ END
@@ -46,6 +47,7 @@ def build_graph(answerer: "Answerer") -> CompiledStateGraph:
     graph.add_node("retrieve", answerer.retrieve_step)
     graph.add_node("context_guard", answerer.context_guard_step)
     graph.add_node("generate", answerer.generate_step)
+    graph.add_node("output_checks", answerer.output_step)
     graph.add_node("check_citations", answerer.check_step)
     graph.add_node("no_answer", lambda state: {"status": "no_answer", "citations": []})
 
@@ -60,7 +62,8 @@ def build_graph(answerer: "Answerer") -> CompiledStateGraph:
         answerer.after_context,
         {"generate": "generate", "no_answer": "no_answer"},
     )
-    graph.add_edge("generate", "check_citations")
+    graph.add_edge("generate", "output_checks")
+    graph.add_edge("output_checks", "check_citations")
     graph.add_conditional_edges(
         "check_citations",
         _after_check,

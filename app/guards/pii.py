@@ -57,11 +57,19 @@ _PATTERNS: dict[str, tuple[re.Pattern[str], object]] = {
 }
 
 
+# Models write narrow or non-breaking spaces and non-breaking hyphens inside numbers. Each maps to
+# exactly one plain character, so positions found in the plain copy are valid in the original.
+_PLAIN = str.maketrans(
+    {c: " " for c in "\u00a0\u2007\u2009\u202f"} | {c: "-" for c in "\u2010\u2011"}
+)
+
+
 def detect(text: str) -> list[Match]:
     """Every sensitive value in the text, in order, without overlaps."""
     found: list[Match] = []
+    plain = text.translate(_PLAIN)
     for kind, (pattern, valid) in _PATTERNS.items():
-        for m in pattern.finditer(text):
+        for m in pattern.finditer(plain):
             if valid and not valid(m.group()):
                 continue
             if any(m.start() < f.end and f.start < m.end() for f in found):
