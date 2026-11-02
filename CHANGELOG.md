@@ -13,6 +13,10 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- `PATCH /v1/documents/{doc_id}/acl`: change who can read a document (needs the `uploader` permission); document and chunks change in one transaction; another tenant's document is a 404 (ISS-037).
+
 ### Changed
 
 - `POST /v1/ask` now requires `Authorization: Bearer <token>` and answers as that user (their tenant and roles); 401 without a valid token (ISS-036).

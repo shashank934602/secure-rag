@@ -11,6 +11,8 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 4 S3 — changing a document's audience** (2026-11-02, ISS-037)
+  - `PATCH /v1/documents/{doc_id}/acl` → `change_acl` (403 without `uploader`, 404 for another tenant's document, 422 for unknown roles); document and chunks updated in one transaction (Invariant 2 tested with a forced failure). The API's database pool opens on first use. 75 db tests.
 - **Phase 4 S2 — login with tokens** (2026-11-02, ISS-036)
   - `app/auth.py`: `issue_token` / `verify_token` / `authenticate` (roles and permissions from the DB per request, inside the tenant scope); dev tokens `python -m app.auth token --tenant … --email …`; `JWT_SECRET` in `.env`.
   - API: `/v1/ask` requires `Authorization: Bearer`, answers as the user; `create_app(authenticator=)`; the eval answers as the settings scope. 121 offline, 67 db tests.

@@ -548,4 +548,9 @@ loaded this log automatically, so the rule survived the new session.
 - Attacks refused in tests: no token, wrong key, tampered contents, `alg: none` (unsigned), expired, and a signed token pointing at a user of *another* company (RLS hides that user).
 - Real run: one question, different correct answers by user. Alice gets 25 days (Aldermoor) and Ned 28 days (Northgate); "CEO's salary?" is "I don't know" for Alice and £185,000 for Ned; salary bands are hidden from Alice (employee) and shown to Harriet (hr).
 
-**Next session starts with:** S3, changing who can see a document (`PATCH …/acl`).
+**Update — S3 changing a document's audience (ISS-037):**
+- `PATCH /v1/documents/{doc_id}/acl`: needs the **uploader** permission (403 otherwise); another company's document gives **404, not 403**, so the server doesn't even confirm it exists; unknown roles give 422.
+- **One transaction** for the document and all its chunks. A test forces the chunk update to fail halfway, and neither copy changes (Invariant 2).
+- Live: Harriet made the leave policy HR-only, and Alice's next question got "I don't know" **immediately**; then it was restored.
+
+**Next session starts with:** S4, the real leakage check and `v0.4.0`.
