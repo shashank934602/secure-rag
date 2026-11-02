@@ -4,13 +4,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 5 — guardrails** (`context/feature-specs/05-guardrails.md`): spec written 2026-11-02, slices S1–S5 (ISS-042 … ISS-046). **Phase 4 done: released `v0.4.0` on 2026-11-02**: RLS, tokens, ACL changes, 0 leaks. Phase 3 `v0.3.0` 2026-10-31; Phase 2 `v0.2.0` 2026-10-30; Phase 1 `v0.1.0` 2026-10-19.
+**Phase 6 — audit trail + observability** (not started). **Phase 5 done: released `v0.5.0` on 2026-11-02**: input guard, context guard, output checks, grounding judge, all fail closed. Phase 4 `v0.4.0`, Phase 3 `v0.3.0`, Phase 2 `v0.2.0`, Phase 1 `v0.1.0`.
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 5 closed — `v0.5.0`** (2026-11-02, ISS-046)
+  - Guards: 45/50 blocked (79–96%), 3/50 false refusals (2–16%). Golden with all guards = Phase 4 (12/14, 0.857, 6/6). Leakage 0. Judge `judge_v2` (ISS-049).
 - **Phase 5 S4 — grounding judge** (2026-11-02, ISS-045)
   - Mistral `ministral-8b-latest` (a different family from the Groq generator) checks every claim against the cited chunks; one retry shared with citation failures; fail closed. Live: rejects "The CEO earns £200,000 [expense-policy:1]". 207 offline, 77 db, live guard tests pass.
 - **Phase 5 S3 — output checks** (2026-11-02, ISS-044)

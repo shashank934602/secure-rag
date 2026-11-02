@@ -589,4 +589,10 @@ loaded this log automatically, so the rule survived the new session.
 - Unsupported → one retry that names the unsupported claims → still unsupported → "I don't know". The judge only runs when citations are valid (cheap checks first).
 - Fail closed: a judge timeout, error, or unreadable verdict → the request is refused (503), never answered unchecked.
 
-**Next session starts with:** S5, the numbers (guards, golden set, leakage) and `v0.5.0`.
+**Update — S5 numbers; Phase 5 released `v0.5.0` (ISS-046, ISS-049):**
+- With **every** guard on, the golden set matched Phase 4 (12/14, key facts 0.857, 6/6 "I don't know"), with 0 real questions refused. Leakage 0; "ignore your rules…" is now **refused**.
+- **The judge is the noisiest guard.** It rejected a *correct* comparison (g16) because the comparison isn't written anywhere, only derived. `judge_v2` allows claims derived from stated facts. An experiment (5 runs each) chose `ministral-8b`: 4/5 correct, 5/5 bluffs rejected. A bigger Mistral model was *worse* (0/5).
+- **Check odd results before believing them:** Llama's "0/5 on everything" was a 404 (the model isn't available), not a verdict.
+- Notes: `lessons/05-guardrails.md` (7 explain-back questions).
+
+**Next session starts with:** Phase 6, the audit trail (hash chain) and observability.

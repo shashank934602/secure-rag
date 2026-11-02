@@ -13,6 +13,21 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-11-02 — Phase 5: guardrails
+
+Phase 5 checks pass: every guard has tests, including fail-closed tests for each model-backed guard. Early numbers
+(`python -m eval.guards`): **45/50 attacks blocked (95% CI 79–96%)**, **3/50 benign questions refused (2–16%)**;
+role-play is the weak spot (4/8, ISS-048). With all guards on, the golden set matches Phase 4 (12/14 answered, key
+facts 0.857, No-Answer 6/6, 0 input-guard refusals; `eval/baselines/phase5.json`), and `eval.leakage` finds 0 leaks,
+with the "ignore your rules" probe now refused. The real judge rejects the Concept 6 bluff. Known: the judge
+rejects ~1 in 5 correct derived answers (ISS-049); the poisoned-document case is not a guard problem (ISS-019).
+The learner's explain-back is pending (build now, study later).
+
+### Changed
+
+- Grounding judge prompt `judge_v2`: claims derived directly from stated facts (comparisons, simple sums) count as supported (ISS-049).
+- `docs/architecture.md` §2/§6: personal-data detection is our pattern detector with checksums, not Presidio; work contacts aren't masked.
+
 ### Added
 
 - Grounding judge: Mistral `ministral-8b-latest` (a different family from the generator) checks every claim against the cited chunks (prompt `judge_v1`); unsupported answers get one retry naming the claims, then No-Answer; any judge failure refuses (503). Settings `grounding_judge`, `judge_model`, `judge_timeout_s` (ISS-045).
