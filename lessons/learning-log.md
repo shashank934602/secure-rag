@@ -572,4 +572,10 @@ loaded this log automatically, so the rule survived the new session.
 - **Lesson: don't tune on the test.** Adjusting rules until these 100 questions pass would make the numbers meaningless; tuning needs a separate dev set (Phase 7). The misses are logged (ISS-048), and the other layers (database access control, output checks) still hold.
 - Fail closed: if the classifier can't run, the request gets a 503, never an unguarded answer.
 
-**Next session starts with:** S2, the context guard and sensitive-data masking.
+**Update — S2 context guard and personal data (ISS-043):**
+- **Indirect injection** (instructions hidden in a document) is caught twice: at ingest, where the planted "pirate" notice scored 1.000 and was **quarantined** (stored, not searchable), and at question time, where flagged chunks are dropped.
+- **Masking happens before the model reads anything:** Alice (no `pii:read`) got "IBAN [IBAN], NI [UK_NINO]", and Harriet (`pii:read`) got the real values. The model can't leak what it never saw; the database keeps the original (ADR-0004).
+- Checksums matter: an IBAN must pass mod-97 and a card the Luhn check, so random long numbers aren't masked. 0 false detections on all 15 existing documents.
+- Spotted for S3: the model rewrote the IBAN with *narrow spaces*, so output checks must normalise spaces before detecting.
+
+**Next session starts with:** S3, output checks.

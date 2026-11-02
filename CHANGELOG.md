@@ -15,6 +15,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Context guard: drops chunks flagged as prompt injection and masks sensitive personal data (IBAN, UK bank account, NI number, card, UK mobile, personal email) for users without `pii:read`; ingest records `pii_types` and `injection_score` and quarantines flagged documents; migration `0004` (ISS-043).
 - Input guard: pattern rules + local prompt-injection classifier (`protectai/deberta-v3-base-prompt-injection-v2`); attacks are refused (`status: refused`) before any search or LLM call; a failing guard returns 503 (ISS-041, ISS-042).
 - Adversarial (50) and benign (50) sets; `python -m eval.guards` reports block and false-refusal rates with 95% Wilson intervals: 45/50 blocked, 3/50 falsely refused (ISS-042, ISS-048).
 
