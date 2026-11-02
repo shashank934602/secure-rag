@@ -11,6 +11,8 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 5 S4 — grounding judge** (2026-11-02, ISS-045)
+  - Mistral `ministral-8b-latest` (a different family from the Groq generator) checks every claim against the cited chunks; one retry shared with citation failures; fail closed. Live: rejects "The CEO earns £200,000 [expense-policy:1]". 207 offline, 77 db, live guard tests pass.
 - **Phase 5 S3 — output checks** (2026-11-02, ISS-044)
   - Graph node `output_checks` after `generate`: no links, images, HTML, or secrets in any answer; personal data redacted unless `pii:read`. 194 offline, 77 db tests.
 - **Phase 5 S2 — context guard and personal data** (2026-11-02, ISS-043)

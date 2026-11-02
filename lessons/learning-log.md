@@ -583,4 +583,10 @@ loaded this log automatically, so the rule survived the new session.
 - The real narrow-space IBAN from S2 is now caught: the detector reads `\u202f` and non-breaking hyphens as plain characters.
 - Citations (`[doc:page]`, `【doc:page】`) are left untouched, so the citation check still works afterwards.
 
-**Next session starts with:** S4, the grounding judge.
+**Update — S4 grounding judge (ISS-045):**
+- The citation check proves an answer *points at* real pages; the **judge** checks the pages *say* what the answer claims. Real result: the Concept 6 bluff ("The CEO earns £200,000 [expense-policy:1]"), which passed every check since Phase 1, is now **rejected**.
+- The judge is a **different model family** (Mistral, while the writer is OpenAI's open model on Groq), so it isn't grading its own style.
+- Unsupported → one retry that names the unsupported claims → still unsupported → "I don't know". The judge only runs when citations are valid (cheap checks first).
+- Fail closed: a judge timeout, error, or unreadable verdict → the request is refused (503), never answered unchecked.
+
+**Next session starts with:** S5, the numbers (guards, golden set, leakage) and `v0.5.0`.

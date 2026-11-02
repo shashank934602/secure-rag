@@ -15,6 +15,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Grounding judge: Mistral `ministral-8b-latest` (a different family from the generator) checks every claim against the cited chunks (prompt `judge_v1`); unsupported answers get one retry naming the claims, then No-Answer; any judge failure refuses (503). Settings `grounding_judge`, `judge_model`, `judge_timeout_s` (ISS-045).
 - Output checks on every answer: links, images, HTML, and URLs removed; secrets redacted; sensitive personal data redacted for users without `pii:read`; the detector handles narrow spaces and non-breaking hyphens (ISS-044).
 - Context guard: drops chunks flagged as prompt injection and masks sensitive personal data (IBAN, UK bank account, NI number, card, UK mobile, personal email) for users without `pii:read`; ingest records `pii_types` and `injection_score` and quarantines flagged documents; migration `0004` (ISS-043).
 - Input guard: pattern rules + local prompt-injection classifier (`protectai/deberta-v3-base-prompt-injection-v2`); attacks are refused (`status: refused`) before any search or LLM call; a failing guard returns 503 (ISS-041, ISS-042).
