@@ -11,6 +11,10 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 4 S1 — row-level security and a second tenant** (2026-11-02, ISS-035)
+  - Migration `0003`: RLS policies on `documents`, `chunks`, `users` (`tenant_id = app.tenant_id`, none visible without a scope); tenant **Northgate Haulage**; users alice / harriet (hr, uploader) / ned; `documents.collection`; Aldermoor roles `{employee, hr}`.
+  - `app/db.py tenant_scope` (SET LOCAL per transaction); `AccessScope`; `search(question, k, scope)`; ingest options. Corpora: `data/tenants/northgate/` (3 docs with `CANARY-NG-*`), `data/tenants/aldermoor-hr/salary-bands.md` (hr only, `CANARY-AF-HR-5b19`). Dev DB at `0003 (head)`.
+  - Real CLI check as an Aldermoor employee: Northgate's pay page and the HR salary bands never appear; the leave answer is Aldermoor's 25 days.
 - **Phase 3 closed — `v0.3.0`** (2026-10-31, ISS-033)
   - Three-way eval, same day: MRR dense 0.917 → hybrid 0.964 → hybrid + rerank **1.000**; recall@5 0.929, key facts 0.857, answered 12/14, No-Answer 6/6 unchanged. Defaults now hybrid + rerank (reranker loads on first use). g06/g17 remain (two-hop, ISS-017).
 - **Phase 3 S3 — LangGraph flow** (2026-10-31, ISS-032)

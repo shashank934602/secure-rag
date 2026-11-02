@@ -536,4 +536,11 @@ loaded this log automatically, so the rule survived the new session.
 
 **What I can now explain:** pending (study chat).
 
-**Next session starts with:** S1, RLS + second tenant + canaries.
+**Update — S1 row-level security + second tenant (ISS-035):**
+- **RLS** is a rule inside Postgres: rows of other tenants are invisible, and with **no** tenant set, *nothing* is visible (fail closed). Our code sets the tenant per transaction (`SET LOCAL`), so a pooled connection can't carry it to the next request.
+- **The key test passed:** a query with **no** `WHERE tenant_id` still saw only its own company. RLS also refused to *write* a row for another company (`new row violates row-level security policy`).
+- Turning RLS on broke old tests that inserted rows without a tenant. That was the point; the tests now act as a tenant.
+- Second company **Northgate Haulage**, with **canaries** (`CANARY-NG-…`) planted in its documents, plus an **HR-only** Aldermoor salary-bands page.
+- Real check as an Aldermoor employee: Northgate's CEO-pay page (which answers "CEO's salary?" word for word) was never retrieved; HR salary bands were invisible; leave = 25 days (Aldermoor's), not 28 (Northgate's).
+
+**Next session starts with:** S2, login with tokens (JWT) and answering as the user.

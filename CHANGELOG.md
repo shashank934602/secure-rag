@@ -13,6 +13,10 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- Row-level security on documents, chunks, and users (migration `0003`), with a per-transaction tenant scope; second tenant Northgate Haulage with canary documents; HR-only Aldermoor document; seeded users with roles and permissions; access scope through search and answering; `python -m app.ingest --tenant --folder --roles --collection` (ISS-035).
+
 ## [0.3.0] — 2026-10-31 — Phase 3: hybrid retrieval, reranking, LangGraph
 
 Phase 3 check passes: hybrid + rerank beats dense-only on ranking and loses nothing. Three runs on the same day, 20 golden
