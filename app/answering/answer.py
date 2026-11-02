@@ -12,7 +12,7 @@ from app.answering.citations import all_citations_retrieved, parse_citations
 from app.answering.graph import AnswerState, build_graph
 from app.config import Settings
 from app.db import make_pool
-from app.domain import AnswerResult, Citation, ScoredChunk
+from app.domain import AccessScope, AnswerResult, Citation, ScoredChunk
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
 from app.retrieval.embeddings import make_embeddings
@@ -52,24 +52,24 @@ class Answerer:
         template = Template((_PROMPTS / f"{PROMPT_VERSION}.md").read_text(encoding="utf-8"))
         self._system_prompt = template.substitute(no_answer=NO_ANSWER)
 
-    def answer(self, question: str) -> AnswerResult:
-        final = self.graph.invoke({"question": question})
+    def answer(self, question: str, scope: AccessScope | None = None) -> AnswerResult:
+        final = self.graph.invoke({"question": question, "scope": scope})
         if final["status"] == "no_answer":
             return self._result("no_answer", NO_ANSWER, [], final["retrieved"])
         answer, citations = final["replies"][-1], final["citations"]
         return self._result("answered", answer, citations, final["retrieved"])
 
-    def retrieve(self, question: str) -> list[ScoredChunk]:
+    def retrieve(self, question: str, scope: AccessScope | None = None) -> list[ScoredChunk]:
         """The top_k chunks the LLM will see: searched directly, or reranked from candidates."""
         if self.reranker is None:
-            return self.index.search(question, k=self.top_k)
-        candidates = self.index.search(question, k=self.candidates)
+            return self.index.search(question, k=self.top_k, scope=scope)
+        candidates = self.index.search(question, k=self.candidates, scope=scope)
         return self.reranker.rerank(question, candidates, k=self.top_k)
 
     # --- graph steps (app/answering/graph.py wires them together) -------------------------
 
     def retrieve_step(self, state: AnswerState) -> AnswerState:
-        return {"retrieved": self.retrieve(state["question"]), "replies": []}
+        return {"retrieved": self.retrieve(state["question"], state.get("scope")), "replies": []}
 
     def after_retrieve(self, state: AnswerState) -> str:
         retrieved = state["retrieved"]

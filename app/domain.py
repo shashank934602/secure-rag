@@ -57,3 +57,12 @@ class AnswerResult(BaseModel):
     citations: list[Citation]
     retrieved: list[ScoredChunk]
     prompt_version: str
+
+
+class AccessScope(BaseModel):
+    """Who a search is for: one tenant and the asking user's roles (GLOSSARY: Access scope)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    tenant_id: str
+    roles: list[str]

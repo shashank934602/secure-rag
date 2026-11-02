@@ -35,3 +35,34 @@ def pg() -> Iterator[PgUrls]:
             env.setenv("DATABASE_URL", urls.app)
             command.upgrade(Config(str(ROOT / "db" / "alembic.ini")), "head")
         yield urls
+
+
+SEEDED_TENANTS = ("Aldermoor", "Northgate Haulage")
+
+
+@pytest.fixture(autouse=True)
+def _clean_database(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Before every `db` test, remove documents (all tenants) and test-made tenants, as the admin.
+
+    The admin is a superuser, so row-level security doesn't hide other tenants' rows from it.
+    """
+    if request.node.get_closest_marker("db") is None:
+        yield
+        return
+    import psycopg
+
+    urls: PgUrls = request.getfixturevalue("pg")
+    with psycopg.connect(urls.admin, autocommit=True) as admin:
+        admin.execute("DELETE FROM documents")
+        admin.execute("DELETE FROM tenants WHERE name <> ALL(%s)", (list(SEEDED_TENANTS),))
+    yield
+
+
+def act_as(conn, tenant: str = "Aldermoor") -> str:
+    """Test helper: make this connection run as `tenant` for the rest of its session; return its id.
+
+    The app sets the scope per transaction (`tenant_scope`); tests set it once per connection.
+    """
+    (tenant_id,) = conn.execute("SELECT id FROM tenants WHERE name = %s", (tenant,)).fetchone()
+    conn.execute("SELECT set_config('app.tenant_id', %s, false)", (str(tenant_id),))
+    return str(tenant_id)

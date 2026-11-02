@@ -14,13 +14,14 @@ import psycopg
 import pytest
 
 from app.config import Settings
-from app.db import connect
+from app.db import connect, tenant_scope
+from app.domain import AccessScope
 from app.ingest import ingest_folder
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
 from app.retrieval.pg_search import _SEARCH_SQL, PgRetriever
 from app.retrieval.search import ChunkIndex
-from tests.conftest import PgUrls
+from tests.conftest import PgUrls, act_as
 from tests.fakes import KeywordEmbeddings
 
 pytestmark = pytest.mark.db
@@ -45,11 +46,10 @@ def corpus(tmp_path: Path) -> Path:
 def conn(pg: PgUrls, corpus: Path) -> Iterator[psycopg.Connection]:
     """rag_app connection over a database holding exactly the three documents above."""
     with connect(pg.app, autocommit=True) as c:
+        act_as(c)
         c.execute("DELETE FROM documents")
         ingest_folder(c, Settings(corpus_dir=corpus, embedding_model="fake:keyword"), EMBEDDINGS)
         yield c
-        c.execute("DELETE FROM documents")
-        c.execute("DELETE FROM tenants WHERE name <> 'Aldermoor'")
 
 
 def _retriever(
@@ -133,17 +133,20 @@ def test_another_tenants_chunks_are_never_returned(conn) -> None:
     (rival,) = conn.execute(
         "INSERT INTO tenants (name, roles) VALUES ('Rival Ltd', '{employee}') RETURNING id"
     ).fetchone()
-    (doc,) = conn.execute(
-        """INSERT INTO documents (tenant_id, slug, source, content_hash, allowed_roles)
-           VALUES (%s, 'rival-leave', 'rival-leave.md', 'h', '{employee}') RETURNING id""",
-        (rival,),
-    ).fetchone()
-    conn.execute(
-        """INSERT INTO chunks (document_id, tenant_id, allowed_roles, page, chunk_index, content,
-                               embedding, embedding_model, content_hash)
-           VALUES (%s, %s, '{employee}', 1, 0, 'Rival leave holiday', %s, 'fake', 'h')""",
-        (doc, rival, np.array(EMBEDDINGS.embed_query("leave holiday"))),
-    )
+    with tenant_scope(conn, rival):  # rows of another tenant can only be written as that tenant
+        (doc,) = conn.execute(
+            """INSERT INTO documents (tenant_id, slug, source, content_hash, allowed_roles,
+                                      collection)
+               VALUES (%s, 'rival-leave', 'rival-leave.md', 'h', '{employee}', 'test')
+               RETURNING id""",
+            (rival,),
+        ).fetchone()
+        conn.execute(
+            """INSERT INTO chunks (document_id, tenant_id, allowed_roles, page, chunk_index,
+                                   content, embedding, embedding_model, content_hash)
+               VALUES (%s, %s, '{employee}', 1, 0, 'Rival leave holiday', %s, 'fake', 'h')""",
+            (doc, rival, np.array(EMBEDDINGS.embed_query("leave holiday"))),
+        )
 
     assert "rival-leave" not in _doc_ids(_retriever(conn).search("leave holiday", k=10))
 
@@ -171,7 +174,9 @@ def test_the_query_can_use_the_hnsw_index(conn) -> None:
             "EXPLAIN " + _SEARCH_SQL,
             {
                 "embedding": np.array(EMBEDDINGS.embed_query("leave")),
-                "tenant_id": conn.execute("SELECT id FROM tenants").fetchone()[0],
+                "tenant_id": conn.execute(
+                    "SELECT id FROM tenants WHERE name = 'Aldermoor'"
+                ).fetchone()[0],
                 "roles": ["employee"],
                 "k": 3,
             },
@@ -234,3 +239,28 @@ def test_every_mode_applies_the_security_filters(conn, mode) -> None:
     found = _doc_ids(_retriever(conn, mode=mode).search("leave holiday hotel expense", k=10))
     assert "leave-policy" not in found  # inactive
     assert "expense-policy" not in found  # wrong role
+
+
+# --- access scope (Phase 4, ISS-035) -----------------------------------------------------------
+
+
+def test_a_scope_with_other_roles_changes_what_is_found(conn) -> None:
+    conn.execute(
+        """UPDATE chunks SET allowed_roles = '{hr}'
+           WHERE document_id = (SELECT id FROM documents WHERE slug = 'leave-policy')"""
+    )
+    retriever = _retriever(conn)  # default scope: employee
+    hr = AccessScope(tenant_id=retriever.default_scope.tenant_id, roles=["hr"])
+
+    assert "leave-policy" not in _doc_ids(retriever.search("leave", k=3))
+    assert _doc_ids(retriever.search("leave", k=3, scope=hr)) == ["leave-policy"]
+
+
+def test_a_scope_for_another_tenant_finds_none_of_this_tenants_chunks(conn) -> None:
+    (northgate,) = conn.execute(
+        "SELECT id FROM tenants WHERE name = 'Northgate Haulage'"
+    ).fetchone()
+    scope = AccessScope(tenant_id=str(northgate), roles=["employee"])
+
+    for mode in ("dense", "keyword", "hybrid"):
+        assert _retriever(conn, mode=mode).search("leave hotel laptop", k=10, scope=scope) == []

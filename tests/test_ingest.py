@@ -13,7 +13,7 @@ import pytest
 from app.config import ROOT, Settings
 from app.db import connect
 from app.ingest import ingest_folder, main
-from tests.conftest import PgUrls
+from tests.conftest import PgUrls, act_as
 from tests.fakes import CountingEmbeddings
 
 pytestmark = pytest.mark.db
@@ -30,6 +30,7 @@ def corpus(tmp_path: Path) -> Path:
 @pytest.fixture
 def conn(pg: PgUrls) -> Iterator[psycopg.Connection]:
     with connect(pg.app, autocommit=True) as c:
+        act_as(c)
         c.execute("DELETE FROM documents")
         yield c
         c.execute("DELETE FROM documents")
@@ -176,3 +177,78 @@ def test_command_exits_1_when_a_document_fails(conn, corpus, pg, capsys) -> None
 
     assert code == 1
     assert "failed" in capsys.readouterr().out
+
+
+# --- tenants, audiences, collections (Phase 4, ISS-035) ---------------------------------------
+
+
+def _small_folder(root: Path, name: str, files: dict[str, str]) -> Path:
+    folder = root / name
+    folder.mkdir()
+    for filename, text in files.items():
+        (folder / filename).write_text(text)
+    return folder
+
+
+def test_roles_set_the_audience_of_new_documents(conn, tmp_path) -> None:
+    folder = _small_folder(tmp_path, "hr", {"salary-bands.md": "Band C pays £42,000."})
+
+    ingest_folder(conn, _settings(folder), CountingEmbeddings(), allowed_roles=["hr"])
+
+    rows = conn.execute(
+        "SELECT d.allowed_roles, c.allowed_roles FROM documents d JOIN chunks c "
+        "ON c.document_id = d.id"
+    ).fetchall()
+    assert rows == [(["hr"], ["hr"])]
+
+
+def test_roles_must_belong_to_the_tenant(conn, tmp_path) -> None:
+    folder = _small_folder(tmp_path, "x", {"a.md": "text"})
+    with pytest.raises(ValueError, match="not all roles"):
+        ingest_folder(conn, _settings(folder), CountingEmbeddings(), allowed_roles=["finance"])
+
+
+def test_ingesting_one_folder_never_removes_another_folders_documents(conn, tmp_path) -> None:
+    first = _small_folder(tmp_path, "first", {"a.md": "Alpha."})
+    second = _small_folder(tmp_path, "second", {"b.md": "Beta."})
+    ingest_folder(conn, _settings(first), CountingEmbeddings())
+
+    report = ingest_folder(conn, _settings(second), CountingEmbeddings())
+
+    assert (report.added, report.removed) == (["b"], [])
+    assert sorted(r[0] for r in conn.execute("SELECT slug FROM documents").fetchall()) == ["a", "b"]
+
+
+def test_an_existing_documents_audience_survives_a_content_update(conn, tmp_path) -> None:
+    folder = _small_folder(tmp_path, "docs", {"policy.md": "Version one."})
+    ingest_folder(conn, _settings(folder), CountingEmbeddings())
+    conn.execute("UPDATE documents SET allowed_roles = '{hr}'")  # as if changed through the API
+    (folder / "policy.md").write_text("Version two.")
+
+    ingest_folder(conn, _settings(folder), CountingEmbeddings())  # default audience: employee
+
+    assert conn.execute("SELECT allowed_roles FROM chunks").fetchall() == [(["hr"],)]
+
+
+def test_another_tenants_documents_are_invisible_after_ingest(conn, pg, tmp_path) -> None:
+    folder = _small_folder(tmp_path, "northgate", {"ng-leave.md": "Northgate leave is 28 days."})
+    settings = _settings(folder).model_copy(update={"tenant": "Northgate Haulage"})
+
+    ingest_folder(conn, settings, CountingEmbeddings())
+
+    assert conn.execute("SELECT count(*) FROM documents").fetchone() == (0,)  # we act as Aldermoor
+    with connect(pg.app) as ned:
+        act_as(ned, "Northgate Haulage")
+        assert ned.execute("SELECT slug FROM documents").fetchall() == [("ng-leave",)]
+
+
+def test_command_takes_tenant_folder_and_roles(conn, pg, tmp_path, capsys) -> None:
+    folder = _small_folder(tmp_path, "hr", {"salary-bands.md": "Band C."})
+    argv = ["--tenant", "Aldermoor", "--folder", str(folder), "--roles", "hr"]
+
+    code = main(argv, settings=_settings(ROOT, pg.app), embeddings=CountingEmbeddings())
+
+    assert code == 0
+    assert conn.execute("SELECT slug, allowed_roles FROM documents").fetchall() == [
+        ("salary-bands", ["hr"])
+    ]

@@ -1,6 +1,12 @@
-"""Ingest the corpus folder into Postgres (spec 02 step 3, ISS-021).
+"""Ingest a folder of documents into Postgres for one tenant (spec 02 step 3; spec 04 D3).
 
-    uv run python -m app.ingest
+    uv run python -m app.ingest                                  # data/sample → Aldermoor
+    uv run python -m app.ingest --tenant "Northgate Haulage" --folder data/tenants/northgate
+    uv run python -m app.ingest --folder data/tenants/aldermoor-hr --roles hr
+
+`--roles` is the audience of *new* documents (default: employee); change an existing document's
+audience with PATCH /v1/documents/{doc_id}/acl. Each folder is its own collection: ingesting one
+folder never removes documents that came from another.
 
 For each document: same fingerprint as stored → skipped; new or changed → chunked, embedded, and
 its chunks replaced in one transaction; a document whose file is gone → deleted with its chunks.
@@ -18,7 +24,7 @@ import psycopg
 from langchain_core.embeddings import Embeddings
 
 from app.config import Settings, get_settings
-from app.db import connect
+from app.db import connect, tenant_scope
 from app.domain import Page
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
@@ -44,12 +50,18 @@ class IngestReport:
 
 
 def ingest_folder(
-    conn: psycopg.Connection, settings: Settings, embeddings: Embeddings
+    conn: psycopg.Connection,
+    settings: Settings,
+    embeddings: Embeddings,
+    *,
+    allowed_roles: list[str] | None = None,
+    collection: str | None = None,
 ) -> IngestReport:
-    """Bring the tenant's documents in line with `settings.corpus_dir`.
+    """Bring `settings.tenant`'s documents from `settings.corpus_dir` up to date.
 
     `conn` must be in autocommit mode, so each document gets its own transaction: one failed
-    document is rolled back and reported, and the others still go in.
+    document is rolled back and reported, and the others still go in. Every write runs in the
+    tenant's scope, so row-level security rejects a row for any other tenant.
     """
     if not conn.autocommit:
         raise ValueError("ingest_folder needs an autocommit connection (one transaction per doc)")
@@ -58,12 +70,18 @@ def ingest_folder(
     ).fetchone()
     if tenant is None:
         raise ValueError(f"Tenant {settings.tenant!r} not found; run the migrations first")
-    tenant_id, roles = tenant
-    stored = dict(
-        conn.execute(
-            "SELECT slug, content_hash FROM documents WHERE tenant_id = %s", (tenant_id,)
-        ).fetchall()
-    )
+    tenant_id, tenant_roles = tenant
+    roles = allowed_roles or ["employee"]
+    if not set(roles) <= set(tenant_roles):
+        raise ValueError(f"Roles {roles} are not all roles of {settings.tenant!r}: {tenant_roles}")
+    collection = collection or settings.corpus_dir.name
+    with tenant_scope(conn, tenant_id):
+        stored = dict(
+            conn.execute(
+                "SELECT slug, content_hash FROM documents WHERE tenant_id = %s AND collection = %s",
+                (tenant_id, collection),
+            ).fetchall()
+        )
 
     pages_by_slug: dict[str, list[Page]] = defaultdict(list)
     for page in load_pages(settings.corpus_dir):
@@ -76,14 +94,19 @@ def ingest_folder(
             report.unchanged.append(slug)
             continue
         try:
-            _replace_document(conn, settings, embeddings, tenant_id, roles, pages, content_hash)
+            _replace_document(
+                conn, settings, embeddings, tenant_id, roles, collection, pages, content_hash
+            )
         except Exception as error:  # report and carry on; the transaction has rolled back
             report.failed[slug] = f"{type(error).__name__}: {error}"
             continue
         (report.updated if slug in stored else report.added).append(slug)
 
     for slug in sorted(set(stored) - set(pages_by_slug)):
-        conn.execute("DELETE FROM documents WHERE tenant_id = %s AND slug = %s", (tenant_id, slug))
+        with tenant_scope(conn, tenant_id):
+            conn.execute(
+                "DELETE FROM documents WHERE tenant_id = %s AND slug = %s", (tenant_id, slug)
+            )
         report.removed.append(slug)
     return report
 
@@ -99,6 +122,7 @@ def _replace_document(
     embeddings: Embeddings,
     tenant_id: str,
     roles: list[str],
+    collection: str,
     pages: list[Page],
     content_hash: str,
 ) -> None:
@@ -111,15 +135,18 @@ def _replace_document(
     # Embed before opening the transaction: a slow network call shouldn't hold database locks.
     vectors = embeddings.embed_documents([c.text for c in chunks])
 
-    with conn.transaction():  # all of it, or none of it
-        (document_id,) = conn.execute(
-            """INSERT INTO documents (tenant_id, slug, source, content_hash, allowed_roles)
-               VALUES (%s, %s, %s, %s, %s)
+    with tenant_scope(conn, tenant_id):  # all of it, or none of it, as this tenant
+        # `roles` applies only to a new document: an existing one keeps its audience (it may have
+        # been changed through the API), and its chunks copy it from the document (ADR-0002).
+        (document_id, roles) = conn.execute(
+            """INSERT INTO documents
+                   (tenant_id, slug, source, content_hash, allowed_roles, collection)
+               VALUES (%s, %s, %s, %s, %s, %s)
                ON CONFLICT (tenant_id, slug) DO UPDATE
                    SET source = EXCLUDED.source, content_hash = EXCLUDED.content_hash,
                        version = documents.version + 1, ingested_at = now()
-               RETURNING id""",
-            (tenant_id, pages[0].doc_id, pages[0].source, content_hash, roles),
+               RETURNING id, allowed_roles""",
+            (tenant_id, pages[0].doc_id, pages[0].source, content_hash, roles, collection),
         ).fetchone()
         conn.execute("DELETE FROM chunks WHERE document_id = %s", (document_id,))
         with conn.cursor() as cur:
@@ -152,15 +179,24 @@ def main(
 ) -> int:
     description = __doc__.split("\n")[0]
     parser = argparse.ArgumentParser(prog="python -m app.ingest", description=description)
-    parser.parse_args(argv)
+    parser.add_argument("--tenant", help="tenant name (default: settings.tenant, Aldermoor)")
+    parser.add_argument("--folder", type=Path, help="folder to ingest (default: data/sample)")
+    parser.add_argument("--roles", help="audience of new documents, comma-separated (employee)")
+    parser.add_argument("--collection", help="collection name (default: the folder's name)")
+    args = parser.parse_args(argv)
     settings = settings or get_settings()
+    overrides = {"tenant": args.tenant, "corpus_dir": args.folder}
+    settings = settings.model_copy(update={k: v for k, v in overrides.items() if v is not None})
+    roles = args.roles.split(",") if args.roles else None
     if not settings.database_url:
         print("Error: DATABASE_URL is not set (see .env.example).", file=sys.stderr)
         return 1
     embeddings = embeddings or make_embeddings(settings.embedding_model)
 
     with connect(settings.database_url, autocommit=True) as conn:
-        report = ingest_folder(conn, settings, embeddings)
+        report = ingest_folder(
+            conn, settings, embeddings, allowed_roles=roles, collection=args.collection
+        )
 
     print(report.summary())
     for slug, error in report.failed.items():

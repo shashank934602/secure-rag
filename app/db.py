@@ -1,5 +1,8 @@
 """Database connections. The app connects as `rag_app` (DATABASE_URL), never as the admin."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import psycopg
 from pgvector.psycopg import register_vector
 from psycopg.conninfo import conninfo_to_dict
@@ -50,3 +53,16 @@ def _address(url: str) -> str:
     """host:port from a connection URL, without the user or password."""
     info = conninfo_to_dict(url)
     return f"{info.get('host', 'localhost')}:{info.get('port', 5432)}"
+
+
+@contextmanager
+def tenant_scope(conn: psycopg.Connection, tenant_id: object) -> Iterator[psycopg.Connection]:
+    """One transaction that runs as `tenant_id`: row-level security then hides every other
+    tenant's documents, chunks, and users, even from a query that forgets `WHERE tenant_id`.
+
+    SET LOCAL (`set_config(..., true)`) ends with the transaction, so a pooled connection never
+    carries one request's tenant into the next.
+    """
+    with conn.transaction():
+        conn.execute("SELECT set_config('app.tenant_id', %s, true)", (str(tenant_id),))
+        yield conn

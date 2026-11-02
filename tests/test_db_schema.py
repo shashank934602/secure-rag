@@ -7,7 +7,7 @@ import psycopg
 import pytest
 
 from app.db import connect
-from tests.conftest import PgUrls
+from tests.conftest import PgUrls, act_as
 
 pytestmark = pytest.mark.db
 
@@ -18,10 +18,10 @@ def _one(url: str, sql: str) -> tuple:
 
 
 def _insert_document(conn: psycopg.Connection, slug: str) -> str:
-    tenant_id = conn.execute("SELECT id FROM tenants WHERE name = 'Aldermoor'").fetchone()[0]
+    tenant_id = act_as(conn, "Aldermoor")
     return conn.execute(
-        """INSERT INTO documents (tenant_id, slug, source, content_hash, allowed_roles)
-           VALUES (%s, %s, %s, 'hash', '{employee}') RETURNING id""",
+        """INSERT INTO documents (tenant_id, slug, source, content_hash, allowed_roles, collection)
+           VALUES (%s, %s, %s, 'hash', '{employee}', 'test') RETURNING id""",
         (tenant_id, slug, f"{slug}.md"),
     ).fetchone()[0]
 
@@ -63,8 +63,9 @@ def test_embeddings_have_an_hnsw_cosine_index(pg: PgUrls) -> None:
     assert any("USING hnsw" in d and "vector_cosine_ops" in d for (d,) in rows)
 
 
-def test_aldermoor_is_seeded_with_the_employee_role(pg: PgUrls) -> None:
-    assert _one(pg.admin, "SELECT name, roles FROM tenants") == ("Aldermoor", ["employee"])
+def test_aldermoor_is_seeded_with_its_roles(pg: PgUrls) -> None:
+    sql = "SELECT roles FROM tenants WHERE name = 'Aldermoor'"
+    assert _one(pg.admin, sql) == (["employee", "hr"],)  # hr added in migration 0003
 
 
 # --- the rag_app role: least privilege (spec 02 D3) -----------------------------------------

@@ -13,7 +13,7 @@ from app.config import Settings
 from app.db import connect
 from app.ingest import ingest_folder
 from app.main import create_app
-from tests.conftest import PgUrls
+from tests.conftest import PgUrls, act_as
 from tests.fakes import CountingEmbeddings, ScriptedChatModel
 
 pytestmark = pytest.mark.db
@@ -25,6 +25,7 @@ def test_ask_and_healthz_end_to_end(pg: PgUrls, tmp_path: Path) -> None:
         corpus_dir=tmp_path, embedding_model="fake:counting", database_url=pg.app, rerank=False
     )
     with connect(pg.app, autocommit=True) as conn:
+        act_as(conn)
         conn.execute("DELETE FROM documents")
         ingest_folder(conn, settings, CountingEmbeddings())
 

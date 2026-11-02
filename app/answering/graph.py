@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Literal, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.domain import Citation, ScoredChunk
+from app.domain import AccessScope, Citation, ScoredChunk
 
 if TYPE_CHECKING:
     from app.answering.answer import Answerer
@@ -27,6 +27,7 @@ MAX_ATTEMPTS = 2  # the first answer plus one retry
 
 class AnswerState(TypedDict, total=False):
     question: str
+    scope: AccessScope | None  # whose documents may be searched (None: the retriever default)
     retrieved: list[ScoredChunk]
     replies: list[str]  # every model reply, in order
     citations: list[Citation]

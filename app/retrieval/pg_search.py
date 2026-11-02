@@ -21,7 +21,8 @@ import psycopg
 from langchain_core.embeddings import Embeddings
 from psycopg_pool import ConnectionPool
 
-from app.domain import Chunk, ScoredChunk
+from app.db import tenant_scope
+from app.domain import AccessScope, Chunk, ScoredChunk
 from app.retrieval.fusion import rrf_fuse
 
 # Read it in the order the database runs it: JOIN → WHERE → ORDER BY → LIMIT → SELECT.
@@ -81,14 +82,14 @@ class PgRetriever:
     ) -> None:
         self._db = db  # one connection (tests, CLI) or a pool (the API)
         self._embeddings = embeddings
-        self._roles = roles
         self._mode = mode
         self._candidates = candidates  # per list, before hybrid fusion
         with self._connection() as conn:
             row = conn.execute("SELECT id FROM tenants WHERE name = %s", (tenant,)).fetchone()
         if row is None:
             raise ValueError(f"Tenant {tenant!r} not found")
-        self._tenant_id = row[0]
+        # Used when a caller passes no scope (the CLI and eval); the API always passes the user's.
+        self.default_scope = AccessScope(tenant_id=str(row[0]), roles=roles)
 
     @contextmanager
     def _connection(self) -> Iterator[psycopg.Connection]:
@@ -98,28 +99,31 @@ class PgRetriever:
         else:
             yield self._db
 
-    def search(self, question: str, k: int) -> list[ScoredChunk]:
+    def search(self, question: str, k: int, scope: AccessScope | None = None) -> list[ScoredChunk]:
+        scope = scope or self.default_scope
         if self._mode == "dense":
-            return self._dense(question, k)
+            return self._dense(question, k, scope)
         if self._mode == "keyword":
-            return self._keyword(question, k)
+            return self._keyword(question, k, scope)
         n = max(k, self._candidates)
-        return rrf_fuse([self._dense(question, n), self._keyword(question, n)], k)
+        return rrf_fuse([self._dense(question, n, scope), self._keyword(question, n, scope)], k)
 
-    def _dense(self, question: str, k: int) -> list[ScoredChunk]:
+    def _dense(self, question: str, k: int, scope: AccessScope) -> list[ScoredChunk]:
         # a numpy array is sent as a pgvector `vector`; a plain list would be an array
         embedding = np.array(self._embeddings.embed_query(question))
-        return self._run(_SEARCH_SQL, {"embedding": embedding, "k": k})
+        return self._run(_SEARCH_SQL, {"embedding": embedding, "k": k}, scope)
 
-    def _keyword(self, question: str, k: int) -> list[ScoredChunk]:
+    def _keyword(self, question: str, k: int, scope: AccessScope) -> list[ScoredChunk]:
         words = keyword_query(question)
         if not words:
             return []
-        return self._run(_KEYWORD_SQL, {"words": words, "k": k})
+        return self._run(_KEYWORD_SQL, {"words": words, "k": k}, scope)
 
-    def _run(self, sql: str, params: dict) -> list[ScoredChunk]:
-        params = {**params, "tenant_id": self._tenant_id, "roles": self._roles}
-        with self._connection() as conn:
+    def _run(self, sql: str, params: dict, scope: AccessScope) -> list[ScoredChunk]:
+        # Two locks on the same door: the query's own WHERE, and row-level security via the
+        # tenant scope, which still holds if a query ever forgets its WHERE (Invariant 1).
+        params = {**params, "tenant_id": scope.tenant_id, "roles": scope.roles}
+        with self._connection() as conn, tenant_scope(conn, scope.tenant_id):
             rows = conn.execute(sql, params).fetchall()
         return [
             ScoredChunk(

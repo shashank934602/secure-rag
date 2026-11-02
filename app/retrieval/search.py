@@ -3,7 +3,7 @@
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import InMemoryVectorStore
 
-from app.domain import Chunk, ScoredChunk
+from app.domain import AccessScope, Chunk, ScoredChunk
 
 
 class ChunkIndex:
@@ -15,7 +15,8 @@ class ChunkIndex:
         if chunks:
             self._store.add_texts(texts=[c.text for c in chunks], ids=[c.id for c in chunks])
 
-    def search(self, question: str, k: int) -> list[ScoredChunk]:
+    def search(self, question: str, k: int, scope: AccessScope | None = None) -> list[ScoredChunk]:
+        # No ACL in memory: `scope` is ignored. Use Postgres (PgRetriever) for real access control.
         if not self._chunks:
             return []
         hits = self._store.similarity_search_with_score(question, k=k)  # cosine, best first
