@@ -17,7 +17,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.domain import Citation, GuardVerdict, ScoredChunk
 from app.guards.injection import GuardUnavailable
 
-JUDGE_PROMPT_VERSION = "judge_v1"
+JUDGE_PROMPT_VERSION = "judge_v2"  # v2: claims derived from stated facts count (g16, ISS-049)
 _PROMPT = (
     Path(__file__).resolve().parent.parent / "prompts" / f"{JUDGE_PROMPT_VERSION}.md"
 ).read_text(encoding="utf-8")
