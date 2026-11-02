@@ -41,6 +41,7 @@ def two_companies(pg: PgUrls, tmp_path: Path) -> Settings:
         database_url=pg.app,
         rerank=False,
         input_guard=False,
+        grounding_judge=False,
     )
     with connect(pg.app, autocommit=True) as conn:
         for tenant, name, text in (

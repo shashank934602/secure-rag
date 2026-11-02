@@ -31,6 +31,7 @@ def settings(pg: PgUrls, tmp_path: Path) -> Iterator[Settings]:
         database_url=pg.app,
         rerank=False,
         input_guard=False,
+        grounding_judge=False,
     )
     with connect(pg.app, autocommit=True) as conn:
         act_as(conn)

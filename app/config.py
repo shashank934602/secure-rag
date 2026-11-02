@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     injection_threshold: float = 0.5
     # Context guard: drop injected chunks (when the classifier is on), mask personal data.
     context_guard: bool = True
+    # Grounding judge (spec 05 D6): a different model family from the generator.
+    grounding_judge: bool = True
+    judge_model: str = "mistralai:ministral-8b-latest"
+    judge_timeout_s: float = 15.0
 
     # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
     database_url: str = ""

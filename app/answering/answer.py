@@ -14,6 +14,7 @@ from app.config import Settings
 from app.db import make_pool
 from app.domain import AccessScope, AnswerResult, Citation, GuardVerdict, ScoredChunk
 from app.guards.context import ContextGuard
+from app.guards.grounding import GroundingJudge
 from app.guards.injection import DebertaInjectionClassifier, InputGuard
 from app.guards.output import check_output
 from app.ingestion.chunking import chunk_pages
@@ -26,6 +27,11 @@ from app.retrieval.search import ChunkIndex
 
 NO_ANSWER = "I don't know based on the documents I can access."
 REFUSAL = "I can't help with that request."
+GROUNDING_NOTE = (
+    "Your reply was rejected: these claims are not supported by the documents: {claims}. "
+    "Answer again using only what the documents say, citing each claim, or reply with "
+    f"exactly: {NO_ANSWER}"
+)
 RETRY_NOTE = (
     "Your reply was rejected: every claim needs a citation copied from a document tag, such as "
     "[leave-policy:1], and only the documents above may be cited. Answer again following the "
@@ -47,6 +53,7 @@ class Answerer:
         threshold: float = 0.0,
         input_guard: InputGuard | None = None,
         context_guard: ContextGuard | None = None,
+        grounding_judge: GroundingJudge | None = None,
     ) -> None:
         self.index = index
         self.chat_model = chat_model
@@ -56,6 +63,7 @@ class Answerer:
         self.threshold = threshold  # best reranker score below this → No-Answer, no LLM call
         self.input_guard = input_guard  # None only in unit tests; the app always has one
         self.context_guard = context_guard
+        self.grounding_judge = grounding_judge
         self.graph = build_graph(self)
         template = Template((_PROMPTS / f"{PROMPT_VERSION}.md").read_text(encoding="utf-8"))
         self._system_prompt = template.substitute(no_answer=NO_ANSWER)
@@ -106,7 +114,7 @@ class Answerer:
             HumanMessage(_user_message(state["question"], state["retrieved"])),
         ]
         if state["replies"]:  # a retry: show the rejected reply and say why
-            messages += [AIMessage(state["replies"][-1]), HumanMessage(RETRY_NOTE)]
+            messages += [AIMessage(state["replies"][-1]), HumanMessage(state["retry_note"])]
         reply = self.chat_model.invoke(messages)
         return {"replies": [*state["replies"], reply.text.strip()]}
 
@@ -121,11 +129,22 @@ class Answerer:
     def check_step(self, state: AnswerState) -> AnswerState:
         text = state["replies"][-1]
         if NO_ANSWER in text:
-            return {"status": "no_answer"}  # the model's own refusal is final
+            return {"outcome": "refusal"}  # the model's own "I don't know" is final
         citations = parse_citations(text)
         if citations and all_citations_retrieved(citations, state["retrieved"]):
-            return {"status": "answered", "citations": citations}
-        return {}  # invalid: the graph retries once, then gives a No-Answer
+            return {"outcome": "valid", "citations": citations}
+        return {"outcome": "invalid", "retry_note": RETRY_NOTE}  # retried once, then No-Answer
+
+    def grounding_step(self, state: AnswerState) -> AnswerState:
+        if self.grounding_judge is None:
+            return {"grounded": True}
+        verdict = self.grounding_judge.check(
+            state["replies"][-1], state["citations"], state["retrieved"]
+        )
+        update = {"grounded": verdict.decision == "PASS", "verdicts": [*state["verdicts"], verdict]}
+        if verdict.decision == "FAIL":
+            update["retry_note"] = GROUNDING_NOTE.format(claims=verdict.reason or "some claims")
+        return update
 
     def _result(
         self,
@@ -162,6 +181,7 @@ def build_answerer(
     reranker: Reranker | None = None,
     input_guard: InputGuard | None = None,
     context_guard: ContextGuard | None = None,
+    grounding_judge: GroundingJudge | None = None,
 ) -> Answerer:
     """Create the answerer: the given retriever, or an in-memory index over the corpus
     (loaded, chunked, and embedded on every start), plus the chat model named in settings."""
@@ -185,6 +205,14 @@ def build_answerer(
         input_guard = InputGuard(classifier, settings.injection_threshold)
     if context_guard is None and settings.context_guard:
         context_guard = ContextGuard(classifier, settings.injection_threshold)
+    if grounding_judge is None and settings.grounding_judge:
+        judge_model = init_chat_model(
+            settings.judge_model,
+            temperature=0,
+            timeout=settings.judge_timeout_s,
+            max_retries=1,
+        )
+        grounding_judge = GroundingJudge(judge_model)
     return Answerer(
         index=retriever,
         chat_model=model,
@@ -194,6 +222,7 @@ def build_answerer(
         threshold=settings.rerank_threshold,
         input_guard=input_guard,
         context_guard=context_guard,
+        grounding_judge=grounding_judge,
     )
 
 

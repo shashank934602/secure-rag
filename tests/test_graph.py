@@ -105,3 +105,60 @@ def test_a_broken_guard_stops_the_request() -> None:
     with pytest.raises(GuardUnavailable):
         a.answer("How much leave?")
     assert a.chat_model.calls == []
+
+
+# --- the grounding judge (Phase 5, ISS-045) ----------------------------------------------------
+
+
+def _judged(answers: list[str], verdicts: list[str]) -> Answerer:
+    from app.guards.grounding import GroundingJudge
+
+    a = _answerer(*answers)
+    a.grounding_judge = GroundingJudge(ScriptedChatModel(responses=verdicts))
+    return a
+
+
+UNSUPPORTED = '{"grounded": false, "unsupported": ["Leave is 30 days"]}'
+SUPPORTED = '{"grounded": true, "unsupported": []}'
+
+
+def test_a_supported_answer_is_answered() -> None:
+    a = _judged(["Leave is 25 days [leave:1]."], [SUPPORTED])
+    result = a.answer("How much leave?")
+    assert result.status == "answered"
+    assert [v.decision for v in result.verdicts if v.guard == "grounding"] == ["PASS"]
+
+
+def test_an_unsupported_answer_is_retried_with_the_claims_named() -> None:
+    a = _judged(
+        ["Leave is 30 days [leave:1].", "Leave is 25 days [leave:1]."], [UNSUPPORTED, SUPPORTED]
+    )
+
+    result = a.answer("How much leave?")
+
+    assert (result.status, result.answer) == ("answered", "Leave is 25 days [leave:1].")
+    note = a.chat_model.calls[1][-1].content
+    assert "not supported by the documents: Leave is 30 days" in note
+
+
+def test_unsupported_twice_is_a_no_answer() -> None:
+    a = _judged(
+        ["Leave is 30 days [leave:1].", "Still 30 days [leave:1]."], [UNSUPPORTED, UNSUPPORTED]
+    )
+    assert a.answer("How much leave?").status == "no_answer"
+    assert len(a.chat_model.calls) == 2
+
+
+def test_a_broken_judge_fails_closed() -> None:
+    import pytest
+
+    from app.guards.injection import GuardUnavailable
+
+    a = _judged(["Leave is 25 days [leave:1]."], ["not json at all"])
+    with pytest.raises(GuardUnavailable):
+        a.answer("How much leave?")
+
+
+def test_the_judge_is_not_asked_when_citations_are_already_invalid() -> None:
+    a = _judged(["No citations here.", "Still none."], [])  # an empty script: any call would fail
+    assert a.answer("How much leave?").status == "no_answer"
