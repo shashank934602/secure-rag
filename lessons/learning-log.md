@@ -578,4 +578,9 @@ loaded this log automatically, so the rule survived the new session.
 - Checksums matter: an IBAN must pass mod-97 and a card the Luhn check, so random long numbers aren't masked. 0 false detections on all 15 existing documents.
 - Spotted for S3: the model rewrote the IBAN with *narrow spaces*, so output checks must normalise spaces before detecting.
 
-**Next session starts with:** S3, output checks.
+**Update — S3 output checks (ISS-044):**
+- **Structural** guards, always on: no links, images, or HTML in any answer, because an image from `evil.example/?data=…` would send data to an attacker just by being displayed (exfiltration). Secrets like API keys are redacted for everyone; personal data for anyone without `pii:read`.
+- The real narrow-space IBAN from S2 is now caught: the detector reads `\u202f` and non-breaking hyphens as plain characters.
+- Citations (`[doc:page]`, `【doc:page】`) are left untouched, so the citation check still works afterwards.
+
+**Next session starts with:** S4, the grounding judge.

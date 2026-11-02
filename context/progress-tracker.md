@@ -11,6 +11,8 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 5 S3 — output checks** (2026-11-02, ISS-044)
+  - Graph node `output_checks` after `generate`: no links, images, HTML, or secrets in any answer; personal data redacted unless `pii:read`. 194 offline, 77 db tests.
 - **Phase 5 S2 — context guard and personal data** (2026-11-02, ISS-043)
   - Ingest records `pii_types` and `injection_score` per chunk and quarantines flagged documents (inactive chunks). The context guard (after retrieval) drops flagged chunks and masks sensitive personal data unless the user has `pii:read`. `data/tenants/aldermoor-finance/expense-payees.md` (fake bank details). Dev DB at `0004 (head)`. 178 offline, 77 db tests.
 - **Phase 5 S1 — input guard** (2026-11-02, ISS-042)
