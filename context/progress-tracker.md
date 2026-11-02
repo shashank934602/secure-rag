@@ -11,6 +11,10 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 4 S2 — login with tokens** (2026-11-02, ISS-036)
+  - `app/auth.py`: `issue_token` / `verify_token` / `authenticate` (roles and permissions from the DB per request, inside the tenant scope); dev tokens `python -m app.auth token --tenant … --email …`; `JWT_SECRET` in `.env`.
+  - API: `/v1/ask` requires `Authorization: Bearer`, answers as the user; `create_app(authenticator=)`; the eval answers as the settings scope. 121 offline, 67 db tests.
+  - Real run: the same question answered per user and company (alice 25 days, ned 28); Northgate's CEO pay only for ned; HR salary bands only for harriet; 401 for no or forged tokens.
 - **Phase 4 S1 — row-level security and a second tenant** (2026-11-02, ISS-035)
   - Migration `0003`: RLS policies on `documents`, `chunks`, `users` (`tenant_id = app.tenant_id`, none visible without a scope); tenant **Northgate Haulage**; users alice / harriet (hr, uploader) / ned; `documents.collection`; Aldermoor roles `{employee, hr}`.
   - `app/db.py tenant_scope` (SET LOCAL per transaction); `AccessScope`; `search(question, k, scope)`; ingest options. Corpora: `data/tenants/northgate/` (3 docs with `CANARY-NG-*`), `data/tenants/aldermoor-hr/salary-bands.md` (hr only, `CANARY-AF-HR-5b19`). Dev DB at `0003 (head)`.

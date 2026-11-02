@@ -543,4 +543,9 @@ loaded this log automatically, so the rule survived the new session.
 - Second company **Northgate Haulage**, with **canaries** (`CANARY-NG-…`) planted in its documents, plus an **HR-only** Aldermoor salary-bands page.
 - Real check as an Aldermoor employee: Northgate's CEO-pay page (which answers "CEO's salary?" word for word) was never retrieved; HR salary bands were invisible; leave = 25 days (Aldermoor's), not 28 (Northgate's).
 
-**Next session starts with:** S2, login with tokens (JWT) and answering as the user.
+**Update — S2 login with tokens (ISS-036):**
+- A **JWT** is a signed note ("user X of company Y, valid until …"); changing any part breaks the signature. Ours holds **only** who you are; your roles are read from the database **on every request**, so a removed role works immediately (tested).
+- Attacks refused in tests: no token, wrong key, tampered contents, `alg: none` (unsigned), expired, and a signed token pointing at a user of *another* company (RLS hides that user).
+- Real run: one question, different correct answers by user. Alice gets 25 days (Aldermoor) and Ned 28 days (Northgate); "CEO's salary?" is "I don't know" for Alice and £185,000 for Ned; salary bands are hidden from Alice (employee) and shown to Harriet (hr).
+
+**Next session starts with:** S3, changing who can see a document (`PATCH …/acl`).
