@@ -560,3 +560,10 @@ loaded this log automatically, so the rule survived the new session.
 - Notes: `lessons/04-access-control.md`.
 
 **Next session starts with:** Phase 5, guardrails (input guard against injection, PII masking, grounding judge).
+
+**Update — Phase 5 kickoff: guardrails (2026-11-02):**
+- Spec 05: input guard (classifier + rules → refusal), ingest scan + quarantine, context guard (drop injected chunks, mask sensitive personal data), output checks (strip links/images/HTML, redact secrets), grounding judge (Mistral, a different family from the generator), all **fail closed**.
+- Design lesson: **not every email is "personal data"**. Work contacts (the service desk, the org chart) are meant for employees, and three golden questions need them. We mask *sensitive* identifiers (bank details, NI numbers, cards, personal mobiles and emails) for users without `pii:read`.
+- Recorded a gap from Phase 4: tokens are HS256 / 60 min, while the architecture says RS256 / 15 min (ISS-047).
+
+**Next session starts with:** S1, the input guard.

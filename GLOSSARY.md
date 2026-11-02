@@ -123,6 +123,17 @@ _Avoid_: filter, validator, guardrail (use "guardrails" only for the whole set)
 **Guard verdict**:
 A guard's decision (`ALLOW`, `DROP`, `MASK`, `PASS`, `FAIL`, `BLOCK`) with a score and reason.
 
+**Quarantined chunk**:
+A chunk whose document was flagged by the ingest injection scan; it stays inactive until reviewed.
+
+**Grounding judge**:
+A second model, from a different family than the generator, that checks every claim in an answer against its cited chunks.
+_Avoid_: fact checker, verifier
+
+**Sensitive personal data**:
+The allow-listed values masked for users without `pii:read`: IBAN, UK bank account, National Insurance number, card number, personal mobile, personal email. Work contact details are not on the list.
+_Avoid_: PII (when the allow-list is meant)
+
 **Fail closed**:
 Treat an unavailable or timed-out guard as a refusal rather than skipping it.
 

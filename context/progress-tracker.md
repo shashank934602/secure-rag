@@ -4,7 +4,7 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 5 — guardrails** (not started). **Phase 4 done: released `v0.4.0` on 2026-11-02**: RLS, tokens, ACL changes, 0 leaks. Phase 3 `v0.3.0` 2026-10-31; Phase 2 `v0.2.0` 2026-10-30; Phase 1 `v0.1.0` 2026-10-19.
+**Phase 5 — guardrails** (`context/feature-specs/05-guardrails.md`): spec written 2026-11-02, slices S1–S5 (ISS-042 … ISS-046). **Phase 4 done: released `v0.4.0` on 2026-11-02**: RLS, tokens, ACL changes, 0 leaks. Phase 3 `v0.3.0` 2026-10-31; Phase 2 `v0.2.0` 2026-10-30; Phase 1 `v0.1.0` 2026-10-19.
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
