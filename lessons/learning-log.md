@@ -596,3 +596,20 @@ loaded this log automatically, so the rule survived the new session.
 - Notes: `lessons/05-guardrails.md` (7 explain-back questions).
 
 **Next session starts with:** Phase 6, the audit trail (hash chain) and observability.
+
+---
+
+## 2026-11-03 — Picking up: a tester for every phase, then Phase 6
+
+**Where we are:** Phase 5 released (`v0.5.0`); Phase 6 (audit trail + observability) not started (no spec yet). Docker Desktop isn't running today.
+
+**What we learned / decided:**
+- New standing rule from the owner (2026-11-02): **every phase gets an independent tester on Sonnet** that tests the UI (Swagger `/docs`), the backend API, and the functionality end to end before the release is tagged. It reports and never fixes. Every finding is fixed or logged as an issue.
+- The tester's first run (checking `v0.5.0`) stopped early: the Sonnet usage limit was reached. It wrote no report and changed nothing.
+- Phase 6 direction: a `requests` record written at the start, hash-chained `audit_events` (append-only), auditor endpoints with `/verify`, and lightweight tracing (per-step timings, redacted logs). Self-hosted Langfuse (about 6 containers) is to be deferred with an issue.
+
+**How we learned it:** set up the tester's role file (local, not in git) and read the Phase 6 plan and architecture.
+
+**What I can now explain:** pending (study chat).
+
+**Next session starts with:** start Docker, re-run the tester on `v0.5.0`, fix what it finds, then write spec 06 and build Phase 6, with the tester at the end.
