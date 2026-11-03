@@ -31,6 +31,8 @@ Every bug, task, open question, and piece of tech debt gets an id here. Progress
 | ISS-052 | Phase 6 S3: auditor endpoints and `/v1/audit/verify`; audited reads | task | 6 | P1 | open | 2026-11-03 | Spec 06 D7. |
 | ISS-053 | Phase 6 S4: structured logs, tester run, release `v0.6.0` | task | 6 | P1 | open | 2026-11-03 | Spec 06 D8. |
 | ISS-054 | Self-hosted Langfuse tracing | debt | 6 | P3 | open | 2026-11-03 | Deferred from Phase 6 (spec 06 D9): about six services. Per-step timings and structured logs cover the concepts for now. |
+| ISS-055 | Over-refusal of a long repeated question; masked data sometimes answered "I don't know" instead of "hidden for your role" | debt | 7 | P3 | open | 2026-11-03 | Tester T-6 (v0.5.0): "How many days annual leave? " ×36 was refused by the classifier; asking for Sara Lin's sort code as alice gave "I don't know" while another phrasing gave placeholders. Safe either way; a clearer message for masked data needs a prompt/UX decision. Tune with the Phase 7 dev set. |
+| ISS-056 | No end-user UI; citations appear in three formats | question | 8 | P3 | open | 2026-11-03 | Tester T-8/T-9 (v0.5.0): only Swagger `/docs` and ReDoc; `/` is 404; tokens only from the CLI. Citations come as `[x:1]`, `【x:1】`, `[ x:1 ]` (all valid); a UI must normalise them. Decide the UI scope in Phase 8. |
 | ISS-016 | Production decisions D-P1 … D-P8 (users, hosting, hosting budget, domain, region, provider data policy, on-call, embedding-outage mode) | question | 8+ | P3 | open | 2026-10-13 | From `docs/production-plan.md` §3. Not needed until Phases 1–7 are done; hosting cost is outside the agreed < $20 AI budget. |
 
 ## Closed

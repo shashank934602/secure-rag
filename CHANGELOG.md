@@ -13,6 +13,27 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- Phase 6 spec (`context/feature-specs/06-audit-observability.md`), ISS-050 … ISS-054; glossary: request record, hash chain.
+
+## [0.5.1] — 2026-11-03 — Fixes from the independent test of v0.5.0
+
+The tester's report (`docs/test-reports/v0.5.0.md`): **release with known issues, no critical or high findings**; suites
+207 offline / 77 db / 7 live, `eval.guards` and `eval.leakage` match the 0.5.0 claims. Triage: T-1, T-3, T-4, T-5 fixed here;
+T-6 → ISS-055; T-8, T-9 → ISS-056; T-7 is ISS-048.
+
+### Fixed
+
+- OpenAPI now documents every error response: 401/413/503 on `/v1/ask`; 401/403/404/413/503 on the ACL route; 503 on `/healthz` (T-1).
+- Request bodies over 16 KB are refused with 413 before they are read (a 5 MB question used to be parsed and echoed back); validation errors no longer echo the input; `HEAD /healthz` works (T-3).
+- The generator call has a 30 s timeout and one retry (`chat_timeout_s`); a network failure no longer hangs a request (T-4).
+- Every 503 carries `Retry-After: 30`; `eval.leakage` retries a probe once after a provider error and reports probes that couldn't run (T-5).
+
+### Added
+
+- `docs/test-reports/`: every phase's independent test report and its triage.
+
 ## [0.5.0] — 2026-11-02 — Phase 5: guardrails
 
 Phase 5 checks pass: every guard has tests, including fail-closed tests for each model-backed guard. Early numbers

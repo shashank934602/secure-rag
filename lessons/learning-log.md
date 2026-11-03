@@ -617,4 +617,11 @@ loaded this log automatically, so the rule survived the new session.
 - Spec 06 written: request record at the start, a hash-chained append-only audit log (any edit or deletion breaks the chain), auditor endpoints with `/verify`, no raw question text stored (keyed hash + redacted text), fail closed if the audit can't be written, and per-step timings. Langfuse deferred (ISS-054).
 - Glossary before code: request record, hash chain.
 
-**Next session starts with:** review the tester's findings, then Phase 6 S1 (hash chain).
+**Update — first independent test, and `v0.5.1`:**
+- The tester (Sonnet) checked `v0.5.0` for 16 minutes with about 30 real questions. Verdict: **release with known issues, no critical or high findings**. It confirmed our numbers (45/50 blocked, 3/50 false refusals, 0 leaks) and every suite.
+- It found what we hadn't tested: the API description listed no error codes; a 5 MB question was accepted and **echoed back** (5,000,153 bytes); a network failure **hung a request for 90+ s** (no time limit on the model call); a rate limit crashed the leakage eval.
+- Fixed in `v0.5.1`, each with a test so it can't come back: documented errors, 16 KB body limit (413), no input echo in errors, a 30 s model timeout, `Retry-After` on 503s. Design questions logged (ISS-055, ISS-056).
+- Lesson: **an independent tester finds a different class of bug.** Our tests check what we designed; the tester attacks what we didn't think of (huge inputs, network failures, two tools hitting rate limits at once).
+- Reports are kept in `docs/test-reports/`.
+
+**Next session starts with:** Phase 6 S1, the hash-chained audit log.

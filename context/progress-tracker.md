@@ -4,13 +4,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 6 — audit trail + observability** (`context/feature-specs/06-audit-observability.md`): spec written 2026-11-03, slices S1–S4 (ISS-050 … ISS-053); Langfuse deferred (ISS-054). Tester checking `v0.5.0`. **Phase 5 done: released `v0.5.0` on 2026-11-02**: input guard, context guard, output checks, grounding judge, all fail closed. Phase 4 `v0.4.0`, Phase 3 `v0.3.0`, Phase 2 `v0.2.0`, Phase 1 `v0.1.0`.
+**Phase 6 — audit trail + observability** (`context/feature-specs/06-audit-observability.md`): spec written 2026-11-03, slices S1–S4 (ISS-050 … ISS-053); Langfuse deferred (ISS-054). `v0.5.1` (2026-11-03) fixed the tester's findings on `v0.5.0`. **Phase 5 done: released `v0.5.0` on 2026-11-02**: input guard, context guard, output checks, grounding judge, all fail closed. Phase 4 `v0.4.0`, Phase 3 `v0.3.0`, Phase 2 `v0.2.0`, Phase 1 `v0.1.0`.
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **`v0.5.1` — fixes from the first independent test** (2026-11-03)
+  - Tester report `docs/test-reports/v0.5.0.md`: release with known issues, no critical/high. Fixed: OpenAPI error responses (T-1), 16 KB body limit + no input echo + HEAD /healthz (T-3), 30 s generator timeout (T-4), Retry-After + eval retry (T-5). Logged: ISS-055, ISS-056. 213 offline, 77 db tests.
 - **Phase 5 closed — `v0.5.0`** (2026-11-02, ISS-046)
   - Guards: 45/50 blocked (79–96%), 3/50 false refusals (2–16%). Golden with all guards = Phase 4 (12/14, 0.857, 6/6). Leakage 0. Judge `judge_v2` (ISS-049).
 - **Phase 5 S4 — grounding judge** (2026-11-02, ISS-045)
