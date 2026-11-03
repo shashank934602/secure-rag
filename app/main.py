@@ -5,6 +5,7 @@
     POST /v1/ask    {"question": "..."} → {answer, citations, request_id, status}
                     needs `Authorization: Bearer <token>`; answers as that user (spec 04 D6)
     PATCH /v1/documents/{doc_id}/acl  {"allowed_roles": [...]} → who may read it (needs `uploader`)
+    GET  /v1/audit/requests/{id}, /v1/audit/requests?…, /v1/audit/verify  (needs `auditor`)
     GET  /healthz   {"status": "ok"} when the database answers (no token)
 
 Tokens: `python -m app.auth token --tenant Aldermoor --email alice@aldermoor.example.com`.
@@ -18,9 +19,10 @@ import time
 import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Request
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -28,6 +30,7 @@ from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, Field, StringConstraints
 
 from app.answering.answer import Answerer, build_db_answerer
+from app.audit.queries import AuditAccessError, get_request, list_requests, verify_tenant
 from app.audit.recorder import AuditRecorder
 from app.auth import AuthError, authenticate
 from app.config import get_settings
@@ -211,6 +214,50 @@ def create_app(
             log.error("acl change failed error=%s", type(error).__name__)
             return _unavailable()
         return JSONResponse(status_code=200, content=changed)
+
+    def _audit_call(read: Callable[[], object]) -> JSONResponse:
+        try:
+            return JSONResponse(status_code=200, content=read())
+        except AuditAccessError as error:
+            return JSONResponse(status_code=error.status, content={"detail": error.detail})
+        except Exception as error:
+            log.error("audit read failed error=%s", type(error).__name__)
+            return _unavailable()
+
+    @app.get("/v1/audit/requests/{request_id}", responses=_error_docs(401, 403, 404, 503))
+    def audit_request(
+        request_id: uuid.UUID, user: Annotated[User, Depends(current_user)]
+    ) -> JSONResponse:
+        """One request with its sources and every decision, in order (needs `auditor`)."""
+        return _audit_call(lambda: get_request(get_database(), user, str(request_id)))
+
+    @app.get("/v1/audit/requests", responses=_error_docs(401, 403, 503))
+    def audit_search(
+        user: Annotated[User, Depends(current_user)],
+        status: Literal["started", "answered", "no_answer", "refused", "error"] | None = None,
+        user_id: uuid.UUID | None = None,
+        since: datetime | None = None,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    ) -> JSONResponse:
+        """Search this tenant's requests, newest first (needs `auditor`)."""
+
+        def search() -> dict:
+            matches = list_requests(
+                get_database(),
+                user,
+                status=status,
+                user_id=str(user_id) if user_id else None,
+                since=since,
+                limit=limit,
+            )
+            return {"requests": matches}
+
+        return _audit_call(search)
+
+    @app.get("/v1/audit/verify", responses=_error_docs(401, 403, 503))
+    def audit_verify(user: Annotated[User, Depends(current_user)]) -> JSONResponse:
+        """Recompute this tenant's hash chain; names the first edited or missing event."""
+        return _audit_call(lambda: verify_tenant(get_database(), user))
 
     @app.get("/healthz", responses=_error_docs(503))
     def healthz() -> JSONResponse:
