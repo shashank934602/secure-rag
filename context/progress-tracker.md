@@ -11,6 +11,8 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 6 S1 — hash-chained audit log** (2026-11-03, ISS-050)
+  - Migration `0005` (dev DB at `0005 (head)`): `requests`, `request_sources`, `audit_events` (RLS; append-only triggers incl. TRUNCATE; rag_app INSERT/SELECT only on events); auditor `audrey@aldermoor.example.com`. `app/audit/chain.py`, `app/audit/log.py`. 220 offline, 86 db tests.
 - **`v0.5.1` — fixes from the first independent test** (2026-11-03)
   - Tester report `docs/test-reports/v0.5.0.md`: release with known issues, no critical/high. Fixed: OpenAPI error responses (T-1), 16 KB body limit + no input echo + HEAD /healthz (T-3), 30 s generator timeout (T-4), Retry-After + eval retry (T-5). Logged: ISS-055, ISS-056. 213 offline, 77 db tests.
 - **Phase 5 closed — `v0.5.0`** (2026-11-02, ISS-046)

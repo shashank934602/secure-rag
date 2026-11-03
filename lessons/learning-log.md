@@ -624,4 +624,11 @@ loaded this log automatically, so the rule survived the new session.
 - Lesson: **an independent tester finds a different class of bug.** Our tests check what we designed; the tester attacks what we didn't think of (huge inputs, network failures, two tools hitting rate limits at once).
 - Reports are kept in `docs/test-reports/`.
 
-**Next session starts with:** Phase 6 S1, the hash-chained audit log.
+**Update — Phase 6 S1: hash-chained audit log (ISS-050):**
+- Each event stores the **previous event's hash** and its own hash, computed from its content plus that previous hash. Edit a past event and its hash no longer matches; even if the attacker recomputes it, the *next* event still points at the old one. Delete one and the numbering has a gap.
+- **Append-only** is enforced by the database for every role, including the admin: UPDATE, DELETE, and TRUNCATE all raise. Only someone who switches the rule off (a superuser) can change history, and **verify** then names the first broken event (tested: edit of #3 → "broken at 3"; deletion of #2 → gap at 3).
+- **Concurrency:** 4 writers adding 40 events at once didn't fork the chain, thanks to a per-tenant lock.
+- Each company has its own chain, invisible to the other (RLS again).
+- Sources are stored as text references (`doc:page:index`), not links to chunk rows, so re-ingesting a document never erases what an old answer was based on.
+
+**Next session starts with:** S2, recording every request into the audit log.

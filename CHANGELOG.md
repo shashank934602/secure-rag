@@ -15,6 +15,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- Audit trail storage (migration `0005`): `requests`, `request_sources`, and `audit_events` chained per tenant with SHA-256 (`app/audit/chain.py`, `app/audit/log.py`); append-only for every role (triggers on UPDATE, DELETE, TRUNCATE); `verify` names the first edited or missing event; auditor user `audrey@aldermoor.example.com` (ISS-050).
 - Phase 6 spec (`context/feature-specs/06-audit-observability.md`), ISS-050 … ISS-054; glossary: request record, hash chain.
 
 ## [0.5.1] — 2026-11-03 — Fixes from the independent test of v0.5.0
