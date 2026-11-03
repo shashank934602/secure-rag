@@ -3,6 +3,7 @@
     uv run python -m eval.run                          # report → eval/reports/<time>.json
     uv run python -m eval.run --save-baseline phase7   # also → eval/baselines/phase7.json
     uv run python -m eval.run --no-judge               # skip the eval judge (no extra calls)
+    uv run python -m eval.run --judge-report PATH      # judge a finished run (no generator calls)
 
 Retrieval settings come from the environment, e.g. RETRIEVAL_MODE=hybrid RERANK=true.
 
@@ -21,7 +22,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -91,7 +92,7 @@ def evaluate(
         health_check=lambda: None,
         authenticator=lambda: lambda _: user,
     )
-    results = []
+    results, answered = [], []
     with TestClient(app, headers={"Authorization": "Bearer eval"}) as client:
         for row in rows:
             hits = answerer.retrieve(row["question"])  # what the LLM sees (reranked if on)
@@ -100,14 +101,7 @@ def evaluate(
             body = _ask(client, row["question"], retries, retry_wait_s)
             latency = clock() - start
             full = captured.results.get(body["request_id"]) if body else None
-            correctness = faithfulness = None
-            if judge is not None and full is not None and full.status == "answered":
-                if row["answerable"]:
-                    correctness = judge.correctness(row["question"], row["expected_answer"],
-                                                    full.answer)  # fmt: skip
-                faithfulness = judge.faithfulness(
-                    full.answer, [h.chunk.text for h in full.retrieved]
-                )
+            answered.append(full)
             results.append(
                 QuestionResult(
                     id=row["id"],
@@ -118,12 +112,23 @@ def evaluate(
                     status=body["status"] if body else "error",
                     answer=body["answer"] if body else "",
                     latency_s=round(latency, 3),
-                    correctness=correctness,
-                    faithfulness=faithfulness,
                     usage=full.usage if full else {},
                 )
             )
             time.sleep(pause_s)
+    if judge is None:
+        return results
+    # Judge only after every question is answered: the judge shares the provider's rate limit with
+    # the system's own grounding judge, and must never slow down or fail what it measures.
+    for i, (row, full) in enumerate(zip(rows, answered, strict=True)):
+        if full is None or full.status != "answered":
+            continue
+        correctness = None
+        if row["answerable"]:
+            correctness = judge.correctness(row["question"], row["expected_answer"], full.answer)
+        faithfulness = judge.faithfulness(full.answer, [h.chunk.text for h in full.retrieved])
+        results[i] = replace(results[i], correctness=correctness, faithfulness=faithfulness)
+        time.sleep(pause_s)
     return results
 
 
@@ -135,6 +140,61 @@ def _ask(client: TestClient, question: str, retries: int, wait_s: float) -> dict
         if attempt < retries:
             time.sleep(wait_s)
     return None
+
+
+def seen_texts(answerer: Answerer, question: str) -> list[str]:
+    """What the LLM read for this question: the retrieved chunks after the context guard (masked,
+    injections dropped). Retrieval and the guard are deterministic, so a past run's view can be
+    rebuilt without calling the generator again."""
+    scope = getattr(answerer.index, "default_scope", None)
+    hits = answerer.retrieve(question, scope)
+    if answerer.context_guard is not None:
+        hits, _ = answerer.context_guard.check(hits, scope)
+    return [hit.chunk.text for hit in hits]
+
+
+def judge_report(
+    report: dict,
+    rows: list[dict],
+    answerer: Answerer,
+    judge: EvalJudge,
+    settings: Settings,
+    pause_s: float = 0.0,
+) -> dict:
+    """Score a finished run with the eval judge, then recompute its summary."""
+    by_id = {row["id"]: row for row in rows}
+    results = []
+    for saved in report["results"]:
+        result, row = QuestionResult(**saved), by_id[saved["id"]]
+        if result.status == "answered":
+            correctness = None
+            if result.answerable:
+                correctness = judge.correctness(
+                    row["question"], row["expected_answer"], result.answer
+                )
+            texts = seen_texts(answerer, row["question"])
+            result = replace(
+                result,
+                correctness=correctness,
+                faithfulness=judge.faithfulness(result.answer, texts),
+            )
+            time.sleep(pause_s)
+        results.append(result)
+    summary = summarise(results, k=settings.top_k) | judged_scores(results)
+    summary |= cost_per_query(results, load_prices())
+    config = {
+        **report["config"],
+        "eval_judge_model": settings.eval_judge_model,
+        "eval_judge_prompts": [CORRECTNESS, FAITHFULNESS],
+    }
+    judged_at = datetime.now(UTC).isoformat(timespec="seconds")
+    return {
+        **report,
+        "config": config,
+        "judged_at": judged_at,
+        "summary": summary,
+        "results": [asdict(r) for r in results],
+    }
 
 
 def load_prices() -> dict:
@@ -204,7 +264,7 @@ def _print(results: list[QuestionResult], report: dict, k: int) -> None:
         print(f"{r.id:4} {ok} {r.status:9} {recall:>6} {rr:>5} {facts:>5} {r.latency_s:5.1f}")
     print()
     for name, value in report["summary"].items():
-        print(f"  {name:20} {value:.3f}" if isinstance(value, float) else f"  {name:20} {value}")
+        print(f"  {name:20} {value:.6g}" if isinstance(value, float) else f"  {name:20} {value}")
     print(f"  {'errors':20} {report['errors']}")
 
 
@@ -215,6 +275,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--pause", type=float, default=1.0, help="seconds between questions")
     parser.add_argument("--no-judge", action="store_true", help="skip correctness/faithfulness")
+    parser.add_argument("--judge-report", metavar="PATH", help="judge a finished run's report")
+    parser.add_argument(
+        "--retry-wait",
+        type=float,
+        default=20.0,
+        help="seconds before retrying a failed question (provider rate limits)",
+    )
     args = parser.parse_args(argv)
 
     settings = get_settings()
@@ -223,12 +290,30 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_judge:
         model = init_chat_model(settings.eval_judge_model, temperature=0, timeout=60)
         judge = EvalJudge(model)
-    results = evaluate(load_golden(), answerer, k=settings.top_k, pause_s=args.pause, judge=judge)
-    report = build_report(results, settings, judged=judge is not None)
+    if args.judge_report:
+        if judge is None:
+            parser.error("--judge-report needs the judge (drop --no-judge)")
+        saved = json.loads(Path(args.judge_report).read_text(encoding="utf-8"))
+        report = judge_report(saved, load_golden(), answerer, judge, settings, args.pause)
+        results = [QuestionResult(**r) for r in report["results"]]
+    else:
+        results = evaluate(
+            load_golden(),
+            answerer,
+            k=settings.top_k,
+            pause_s=args.pause,
+            judge=judge,
+            retry_wait_s=args.retry_wait,
+        )
+        report = build_report(results, settings, judged=judge is not None)
 
     _print(results, report, settings.top_k)
     print(f"\nreport: {write_report(report).relative_to(ROOT)}")
-    if args.save_baseline:
+    if args.save_baseline and report["errors"]:
+        print(
+            f"baseline NOT saved: {report['errors']} questions failed (a baseline must be complete)"
+        )
+    elif args.save_baseline:
         baseline = BASELINES / f"{args.save_baseline}.json"
         baseline.parent.mkdir(parents=True, exist_ok=True)
         baseline.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")

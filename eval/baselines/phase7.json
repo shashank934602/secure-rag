@@ -1,0 +1,679 @@
+{
+  "created_at": "2026-11-03T09:03:34+00:00",
+  "git_commit": "9fc9637",
+  "config": {
+    "chat_model": "groq:openai/gpt-oss-120b",
+    "chat_temperature": 0.0,
+    "embedding_model": "mistralai:mistral-embed",
+    "prompt_version": "answer_v1",
+    "chunk_size": 400,
+    "chunk_overlap": 50,
+    "top_k": 5,
+    "retriever": "postgres",
+    "retrieval_mode": "hybrid",
+    "candidates": 20,
+    "rerank": true,
+    "reranker_model": "BAAI/bge-reranker-base",
+    "rerank_threshold": 0.0,
+    "judge_model": "mistralai:ministral-8b-2512",
+    "eval_judge_model": "mistralai:ministral-14b-2512",
+    "eval_judge_prompts": [
+      "eval_correctness_v1",
+      "eval_faithfulness_v1"
+    ]
+  },
+  "summary": {
+    "questions": 20,
+    "answerable": 14,
+    "unanswerable": 6,
+    "recall_at_5": 0.9285714285714286,
+    "mrr": 1.0,
+    "key_fact_score": 0.7857142857142857,
+    "answered_rate": 0.7857142857142857,
+    "false_refusals": 3,
+    "no_answer_accuracy": 1,
+    "latency_p50_s": 3.408,
+    "latency_p95_s": 8.61495,
+    "correctness": 0.6666666666666666,
+    "faithfulness": 1.0,
+    "judge_unscored": 2,
+    "tokens_per_query": 2838.4,
+    "cost_per_query_usd": 0.000474,
+    "unpriced_models": []
+  },
+  "errors": 0,
+  "results": [
+    {
+      "id": "g01",
+      "answerable": true,
+      "expected_sources": [
+        "annual-leave-policy:1"
+      ],
+      "key_facts": [
+        "25 days",
+        "8 UK bank holidays"
+      ],
+      "retrieved": [
+        "annual-leave-policy:1",
+        "annual-leave-policy:1",
+        "employee-handbook:1",
+        "remote-work-policy:1",
+        "sickness-absence-policy:1"
+      ],
+      "status": "answered",
+      "answer": "Full‑time employees are entitled to **25 days of paid annual leave** each leave year, in addition to the **8 UK bank holidays** [annual-leave-policy:1].",
+      "latency_s": 3.697,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1906,
+          "output_tokens": 124,
+          "total_tokens": 2030
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 896,
+          "output_tokens": 20,
+          "total_tokens": 916
+        }
+      }
+    },
+    {
+      "id": "g02",
+      "answerable": true,
+      "expected_sources": [
+        "annual-leave-policy:1"
+      ],
+      "key_facts": [
+        "5 days",
+        "31 March"
+      ],
+      "retrieved": [
+        "annual-leave-policy:1",
+        "annual-leave-policy:1",
+        "vendor-contract-swiftparts:2",
+        "employee-handbook:1",
+        "remote-work-policy:1"
+      ],
+      "status": "answered",
+      "answer": "You can carry over a maximum of **5 days** of unused annual leave into the next leave year, and any carried‑over days must be taken **by 31 March** of that year or they will be lost. [annual-leave-policy:1]",
+      "latency_s": 3.245,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1810,
+          "output_tokens": 187,
+          "total_tokens": 1997
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 913,
+          "output_tokens": 20,
+          "total_tokens": 933
+        }
+      }
+    },
+    {
+      "id": "g03",
+      "answerable": true,
+      "expected_sources": [
+        "expense-policy:1"
+      ],
+      "key_facts": [
+        "£190"
+      ],
+      "retrieved": [
+        "expense-policy:1",
+        "expense-policy:1",
+        "annual-leave-policy:1",
+        "it-security-policy:1",
+        "sickness-absence-policy:1"
+      ],
+      "status": "answered",
+      "answer": "The policy sets the maximum hotel rate at **£190 per night for stays in London**【expense-policy:1:1】.",
+      "latency_s": 3.801,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1605,
+          "output_tokens": 234,
+          "total_tokens": 1839
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 890,
+          "output_tokens": 20,
+          "total_tokens": 910
+        }
+      }
+    },
+    {
+      "id": "g04",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-swiftparts:2"
+      ],
+      "key_facts": [
+        "45 days"
+      ],
+      "retrieved": [
+        "vendor-contract-swiftparts:2",
+        "vendor-contract-trackline:1",
+        "vendor-contract-swiftparts:3",
+        "vendor-contract-swiftparts:1",
+        "vendor-contract-cleanfleet:1"
+      ],
+      "status": "answered",
+      "answer": "Aldermoor must pay undisputed SwiftParts invoices within 45 days of the invoice date【vendor-contract-swiftparts:2】.",
+      "latency_s": 3.094,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1699,
+          "output_tokens": 99,
+          "total_tokens": 1798
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 564,
+          "output_tokens": 20,
+          "total_tokens": 584
+        }
+      }
+    },
+    {
+      "id": "g05",
+      "answerable": true,
+      "expected_sources": [
+        "it-security-policy:1"
+      ],
+      "key_facts": [
+        "1 hour",
+        "555-0150",
+        "security@aldermoor.example.com"
+      ],
+      "retrieved": [
+        "it-security-policy:1",
+        "it-security-policy:1",
+        "employee-handbook:1",
+        "remote-work-policy:1",
+        "remote-work-policy:1"
+      ],
+      "status": "answered",
+      "answer": "You should report a lost laptop **within 1 hour** of noticing it [it-security-policy:1].  \nReport it to the **IT Service Desk** – call **555‑0150** or email **security@aldermoor.example.com** (out‑of‑hours the phone is answered by the on‑call engineer) [it-security-policy:1].",
+      "latency_s": 4.464,
+      "correctness": 1.0,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1643,
+          "output_tokens": 254,
+          "total_tokens": 1897
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 941,
+          "output_tokens": 20,
+          "total_tokens": 961
+        }
+      }
+    },
+    {
+      "id": "g06",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-swiftparts:3",
+        "org-chart:1"
+      ],
+      "key_facts": [
+        "Hannah Brooks",
+        "hannah.brooks@aldermoor.example.com"
+      ],
+      "retrieved": [
+        "vendor-contract-swiftparts:3",
+        "vendor-contract-swiftparts:1",
+        "vendor-contract-trackline:1",
+        "vendor-contract-cleanfleet:1",
+        "it-security-policy:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 2.458,
+      "correctness": null,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1324,
+          "output_tokens": 277,
+          "total_tokens": 1601
+        }
+      }
+    },
+    {
+      "id": "g07",
+      "answerable": true,
+      "expected_sources": [
+        "remote-work-policy:1",
+        "expense-policy:1"
+      ],
+      "key_facts": [
+        "£300",
+        "30 days"
+      ],
+      "retrieved": [
+        "remote-work-policy:1",
+        "expense-policy:1",
+        "expense-policy:1",
+        "employee-handbook:1",
+        "expense-payees:1"
+      ],
+      "status": "answered",
+      "answer": "The home‑office allowance is a **one‑off £300** payment for eligible employees [remote-work-policy:1].  \n\nClaims for the allowance (or any other expense) must be submitted **within 30 days of the date the cost was incurred** [expense-policy:1].",
+      "latency_s": 6.139,
+      "correctness": 0.6666666666666666,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 3683,
+          "output_tokens": 542,
+          "total_tokens": 4225
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 2667,
+          "output_tokens": 130,
+          "total_tokens": 2797
+        }
+      }
+    },
+    {
+      "id": "g08",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "annual-leave-policy:1",
+        "sickness-absence-policy:1",
+        "remote-work-policy:1",
+        "remote-work-policy:1",
+        "annual-leave-policy:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 3.603,
+      "correctness": null,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1664,
+          "output_tokens": 63,
+          "total_tokens": 1727
+        }
+      }
+    },
+    {
+      "id": "g09",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "vendor-contract-swiftparts:3",
+        "vendor-contract-trackline:1",
+        "vendor-contract-trackline:1",
+        "vendor-contract-cleanfleet:1",
+        "remote-work-policy:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 2.227,
+      "correctness": null,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1450,
+          "output_tokens": 101,
+          "total_tokens": 1551
+        }
+      }
+    },
+    {
+      "id": "g10",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "vendor-contract-swiftparts:3",
+        "vendor-contract-cleanfleet:1",
+        "employee-handbook:1",
+        "health-and-safety-policy:1",
+        "remote-work-policy:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 3.468,
+      "correctness": null,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1998,
+          "output_tokens": 95,
+          "total_tokens": 2093
+        }
+      }
+    },
+    {
+      "id": "g11",
+      "answerable": true,
+      "expected_sources": [
+        "sickness-absence-policy:1"
+      ],
+      "key_facts": [
+        "6 weeks"
+      ],
+      "retrieved": [
+        "sickness-absence-policy:1",
+        "sickness-absence-policy:1",
+        "annual-leave-policy:1",
+        "annual-leave-policy:1",
+        "remote-work-policy:1"
+      ],
+      "status": "answered",
+      "answer": "You are entitled to **6 weeks** of company sick pay, because you have between 1 and 5 years of service [sickness-absence-policy:1].",
+      "latency_s": 8.61,
+      "correctness": 0.6666666666666666,
+      "faithfulness": 1.0,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 3112,
+          "output_tokens": 265,
+          "total_tokens": 3377
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 883,
+          "output_tokens": 20,
+          "total_tokens": 903
+        }
+      }
+    },
+    {
+      "id": "g12",
+      "answerable": true,
+      "expected_sources": [
+        "health-and-safety-policy:1"
+      ],
+      "key_facts": [
+        "5 mph"
+      ],
+      "retrieved": [
+        "health-and-safety-policy:1",
+        "vendor-contract-cleanfleet:1",
+        "annual-leave-policy:1",
+        "vendor-contract-cleanfleet:1",
+        "annual-leave-policy:1"
+      ],
+      "status": "answered",
+      "answer": "The speed limit for all vehicles in the depot yards is **5 mph**【health-and-safety-policy:1】.",
+      "latency_s": 3.348,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1717,
+          "output_tokens": 86,
+          "total_tokens": 1803
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 677,
+          "output_tokens": 20,
+          "total_tokens": 697
+        }
+      }
+    },
+    {
+      "id": "g13",
+      "answerable": true,
+      "expected_sources": [
+        "health-and-safety-policy:1"
+      ],
+      "key_facts": [
+        "24 hours",
+        "SafeSite"
+      ],
+      "retrieved": [
+        "health-and-safety-policy:1",
+        "it-security-policy:1",
+        "it-security-policy:1",
+        "annual-leave-policy:1",
+        "annual-leave-policy:1"
+      ],
+      "status": "answered",
+      "answer": "You must report the near‑miss within **24 hours**. Do so by submitting it through the **SafeSite** app or by completing the paper form that is kept in each site office. [health-and-safety-policy:1]",
+      "latency_s": 3.878,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1790,
+          "output_tokens": 155,
+          "total_tokens": 1945
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 702,
+          "output_tokens": 20,
+          "total_tokens": 722
+        }
+      }
+    },
+    {
+      "id": "g14",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-trackline:1"
+      ],
+      "key_facts": [
+        "6 months"
+      ],
+      "retrieved": [
+        "vendor-contract-trackline:1",
+        "vendor-contract-trackline:1",
+        "vendor-contract-swiftparts:2",
+        "health-and-safety-policy:1",
+        "it-security-policy:1"
+      ],
+      "status": "answered",
+      "answer": "TrackLine must retain vehicle location history for **6 months** before deleting it [vendor-contract-trackline:1].",
+      "latency_s": 3.2,
+      "correctness": 0.5,
+      "faithfulness": 1.0,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1769,
+          "output_tokens": 81,
+          "total_tokens": 1850
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 816,
+          "output_tokens": 20,
+          "total_tokens": 836
+        }
+      }
+    },
+    {
+      "id": "g15",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-cleanfleet:1"
+      ],
+      "key_facts": [
+        "£4,200"
+      ],
+      "retrieved": [
+        "vendor-contract-cleanfleet:1",
+        "vendor-contract-trackline:1",
+        "vendor-contract-cleanfleet:1",
+        "employee-handbook:1",
+        "remote-work-policy:1"
+      ],
+      "status": "answered",
+      "answer": "Aldermoor pays CleanFleet a fixed fee of **£4,200 per month** (excluding VAT) for fleet cleaning services. [vendor-contract-cleanfleet:1]",
+      "latency_s": 3.745,
+      "correctness": 0.5,
+      "faithfulness": 1.0,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1893,
+          "output_tokens": 137,
+          "total_tokens": 2030
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 845,
+          "output_tokens": 20,
+          "total_tokens": 865
+        }
+      }
+    },
+    {
+      "id": "g16",
+      "answerable": true,
+      "expected_sources": [
+        "vendor-contract-trackline:1",
+        "vendor-contract-swiftparts:2"
+      ],
+      "key_facts": [
+        "TrackLine",
+        "30 days",
+        "45 days"
+      ],
+      "retrieved": [
+        "vendor-contract-trackline:1",
+        "vendor-contract-swiftparts:1",
+        "vendor-contract-swiftparts:3",
+        "vendor-contract-swiftparts:2",
+        "vendor-contract-trackline:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 8.709,
+      "correctness": null,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 3158,
+          "output_tokens": 487,
+          "total_tokens": 3645
+        },
+        "ministral-8b-2512": {
+          "input_tokens": 2288,
+          "output_tokens": 304,
+          "total_tokens": 2592
+        }
+      }
+    },
+    {
+      "id": "g17",
+      "answerable": true,
+      "expected_sources": [
+        "employee-handbook:1",
+        "org-chart:1"
+      ],
+      "key_facts": [
+        "£50",
+        "Head of Procurement",
+        "hannah.brooks@aldermoor.example.com"
+      ],
+      "retrieved": [
+        "employee-handbook:1",
+        "it-security-policy:1",
+        "vendor-contract-cleanfleet:1",
+        "vendor-contract-swiftparts:3",
+        "vendor-contract-trackline:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 2.55,
+      "correctness": null,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1445,
+          "output_tokens": 206,
+          "total_tokens": 1651
+        }
+      }
+    },
+    {
+      "id": "g18",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "employee-handbook:1",
+        "health-and-safety-policy:1",
+        "vendor-contract-trackline:1",
+        "vendor-contract-cleanfleet:1",
+        "it-security-policy:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 2.314,
+      "correctness": null,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 2127,
+          "output_tokens": 107,
+          "total_tokens": 2234
+        }
+      }
+    },
+    {
+      "id": "g19",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "vendor-contract-swiftparts:1",
+        "employee-handbook:1",
+        "org-chart:1",
+        "vendor-contract-cleanfleet:1",
+        "vendor-contract-cleanfleet:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 2.141,
+      "correctness": null,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1585,
+          "output_tokens": 80,
+          "total_tokens": 1665
+        }
+      }
+    },
+    {
+      "id": "g20",
+      "answerable": false,
+      "expected_sources": [],
+      "key_facts": [],
+      "retrieved": [
+        "vendor-contract-swiftparts:3",
+        "health-and-safety-policy:1",
+        "employee-handbook:1",
+        "vendor-contract-cleanfleet:1",
+        "annual-leave-policy:1"
+      ],
+      "status": "no_answer",
+      "answer": "I don't know based on the documents I can access.",
+      "latency_s": 2.454,
+      "correctness": null,
+      "faithfulness": null,
+      "usage": {
+        "openai/gpt-oss-120b": {
+          "input_tokens": 1991,
+          "output_tokens": 104,
+          "total_tokens": 2095
+        }
+      }
+    }
+  ],
+  "judged_at": "2026-11-03T09:44:02+00:00"
+}

@@ -663,4 +663,13 @@ loaded this log automatically, so the rule survived the new session.
 
 **Still unclear:** explain-back questions for Lessons 1b–6 (study chat).
 
-**Next session starts with:** Phase 7 — the full evaluation and a CI gate (a spec first), with the tester at the end.
+**Update — Phase 7 started: the eval gate (spec 07, ADR-0006):**
+- The test sets grew from 50 to **320 attacks, 339 ordinary questions, 109 document passages**, plus a public benchmark slice. Each case is fixed in `dev` or `test` by a hash of its id, so tuning can never peek at the test set.
+- **Bigger sets changed the story:** attacks blocked went from "90%" (50 cases) to **73.7% (95% CI 67.7–79.0%)** on 232 test cases. The old set leaned on what the guard is good at: "ignore your instructions" is caught 100%, but "list every document" only 42% and link tricks 47%. Lesson: a small eval can be honest and still misleading; the error bar tells you how much to trust it.
+- Why that's survivable: row-level security and the output checks are the real walls. "List every document" can only list what this user may see; links are stripped regardless.
+- The context guard catches 55% of attacks hidden in documents, wrongly drops 19% of legitimate instruction-like passages, and dropped **0 of our 28 real chunks**.
+- **The gate**: hard checks (pinned models, any attack that used to be blocked now passing), floors just below today's numbers (a *ratchet*), and the architecture's goals as *targets* that are reported but don't fail yet.
+- **Measured why per-case checks matter:** weakening the guard (threshold 0.5 → 0.9) only moved the rate 73.7% → 71.1%, but the per-case check named the 9 attacks that now got through. Gate: FAILED, exit 1.
+- On any branch but `main`, the gate reads its bar **from `main`**: a change can't weaken a guard and lower the bar in the same breath.
+
+**Next session starts with:** Phase 7 — the quality baseline, CI proof on a demo branch, the tester, `v0.7.0`.

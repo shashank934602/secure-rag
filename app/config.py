@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     judge_timeout_s: float = 15.0
     # The eval judge scores answers for the eval only (spec 07 D6): not the grounding judge, so the
     # guard doesn't grade itself.
-    eval_judge_model: str = "mistralai:mistral-small-2603"
+    eval_judge_model: str = "mistralai:ministral-14b-2512"
 
     # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
     database_url: str = ""

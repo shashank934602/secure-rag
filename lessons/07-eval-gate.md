@@ -92,7 +92,33 @@ branch that weakens a guard *and* lowers the floor still fails, because its lowe
 
 ## 6. Quality: correctness, faithfulness, cost
 
-_(filled in from the quality baseline below)_
+The golden set (20 questions) with the real models, scored by the **eval judge** (`ministral-14b-2512`: not the grounding
+judge, so the guard doesn't grade itself; a different family from the generator):
+
+| Measure | Value | Target |
+|---------|-------|--------|
+| Recall@5 | 0.929 | ≥ 0.85 ✅ |
+| Correctness (judge vs expected answer) | **0.667** (0.85 on the 11 answered) | ≥ 0.75 ✗ |
+| Faithfulness (claims supported by what the LLM saw) | **1.000** | ≥ 0.85 ✅ |
+| No-Answer when it should | 6/6 | |
+| p50 / p95 latency | 3.4 s / 8.6 s | p95 ≤ 8 s ✗ |
+| Tokens / cost per question | 2,838 / **$0.00047** at list price | |
+
+Read it together: everything the system *says* is supported by its documents (faithfulness 1.0), but it says "I don't know"
+to 3 answerable questions (g06, g17 two-hop; g16 a comparison the grounding judge rejects, ISS-017, ISS-049), and those count
+as 0 correctness. **The system errs on the side of silence** — the right failure for a security product, and now a number.
+
+**How the judge works** (the method behind RAGAS): split a text into claims, check each one. Correctness splits the
+*expected* answer and asks "is each claim in the answer?"; faithfulness splits the *answer* and asks "is each claim in the
+documents?". Two short prompts we can read (`eval/prompts/`), versioned and pinned.
+
+**What the free tier taught us (ISS-064):**
+- The judge and the system's own grounding judge share one Mistral rate limit. Judging *while* answering made 8 of 20
+  questions fail. Fix: answer everything first, judge afterwards: **the measurement must never disturb what it measures.**
+- Groq's free tier allows 200,000 tokens a day; one golden run uses ~45,000. Today's runs used it up, and two re-runs
+  failed. The runner now **refuses to save a baseline from an incomplete run**, and a finished run can be **judged later**
+  (`--judge-report`) without asking the generator again: retrieval and the guards are deterministic, so what the model saw
+  can be rebuilt exactly.
 
 ## Explain it back (later)
 

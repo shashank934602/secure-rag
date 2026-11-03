@@ -135,7 +135,7 @@ def test_the_eval_run_scores_answers_with_the_judge_and_reports_cost() -> None:
     assert (results[1].correctness, results[1].faithfulness) == (None, None)  # not answered
     assert report["summary"]["correctness"] == 1.0
     assert report["summary"]["cost_per_query_usd"] > 0
-    assert report["config"]["eval_judge_model"] == "mistralai:mistral-small-2603"
+    assert report["config"]["eval_judge_model"] == "mistralai:ministral-14b-2512"
 
 
 def test_a_rate_limited_judge_waits_and_retries_then_gives_up_without_crashing() -> None:
@@ -163,3 +163,41 @@ def test_a_rate_limited_judge_waits_and_retries_then_gives_up_without_crashing()
     waits.clear()
     assert EvalJudge(Down(responses=[]), sleep=waits.append).correctness("q", "25", "25") is None
     assert waits == [10.0, 20.0]
+
+
+def test_correctness_is_unknown_when_the_judge_scored_no_answer() -> None:
+    results = [_result(correctness=None), _result(status="no_answer", answer=NO_ANSWER)]
+    assert judged_scores(results)["correctness"] is None  # not 0.0 from the unanswered one
+
+
+def test_a_finished_run_can_be_judged_later_without_the_generator() -> None:
+    from dataclasses import asdict
+
+    from eval.run import judge_report
+
+    model = MeteredModel(responses=["Leave is 25 days [leave:1].", NO_ANSWER])
+    answerer = _answerer(model)
+    settings = Settings(_env_file=None)
+    report = build_report(evaluate(ROWS, answerer, k=1), settings, judged=False)
+    calls_before = len(model.calls)
+    judge = EvalJudge(
+        ScriptedChatModel(
+            responses=[
+                '{"claims": [{"claim": "25 days", "present": true}], "contradicts": false}',
+                '{"claims": [{"claim": "Leave is 25 days", "supported": true}]}',
+            ]
+        )
+    )
+
+    judged = judge_report(report, ROWS, answerer, judge, settings)
+
+    assert len(model.calls) == calls_before  # the generator wasn't asked again
+    assert judged["summary"]["correctness"] == 1.0
+    assert judged["summary"]["faithfulness"] == 1.0
+    assert judged["results"][0] == asdict(replace_scores(report["results"][0]))
+
+
+def replace_scores(saved: dict):
+    from eval.metrics import QuestionResult
+
+    return QuestionResult(**{**saved, "correctness": 1.0, "faithfulness": 1.0})

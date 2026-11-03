@@ -13,7 +13,7 @@ pins:
   chat_model: groq:openai/gpt-oss-120b
   embedding_model: mistralai:mistral-embed
   judge_model: mistralai:ministral-8b-2512
-  eval_judge_model: mistralai:mistral-small-2603
+  eval_judge_model: mistralai:ministral-14b-2512
   injection_model: protectai/deberta-v3-base-prompt-injection-v2
   injection_revision: 90c9989b1a342275dd0d1a95aad283c04e075671
   reranker_model: BAAI/bge-reranker-base
@@ -45,8 +45,16 @@ security:  # python -m eval.security; own cases, test split; deterministic
 
 quality:  # python -m eval.run; real models, so floors carry a margin for run-to-run noise
   baseline: eval/baselines/phase7.json
+  # Baseline 2026-11-03 (20 golden questions): recall@5 0.929, MRR 1.000, key facts 0.786,
+  # No-Answer 6/6, correctness 0.667 (0.85 on answered), faithfulness 1.000, p95 8.6 s.
+  # One question moves recall/key facts by ~0.07, so floors allow about one miss.
   floors:
-    recall_at_5: 0.0
+    recall_at_5: 0.85
+    mrr: 0.90
+    key_fact_score: 0.70
+    no_answer_accuracy: 0.83
+    correctness: 0.55
+    faithfulness: 0.85
   hard:
     errors: 0
   targets:
@@ -55,11 +63,10 @@ quality:  # python -m eval.run; real models, so floors carry a margin for run-to
     faithfulness: 0.85
     latency_p95_s: 8.0
   lower_is_better: [latency_p95_s]
-  report: [mrr, key_fact_score, no_answer_accuracy, correctness, faithfulness, latency_p50_s,
-           latency_p95_s, cost_per_query_usd]
+  report: [latency_p50_s, latency_p95_s, tokens_per_query, cost_per_query_usd, judge_unscored]
 
 # List prices in USD per million tokens, for the cost-per-query estimate (the free tier costs 0).
 prices:
   groq:openai/gpt-oss-120b: {input: 0.15, output: 0.60}
   mistralai:ministral-8b-2512: {input: 0.10, output: 0.10}
-  mistralai:mistral-small-2603: {input: 0.10, output: 0.30}
+  mistralai:ministral-14b-2512: {input: 0.20, output: 0.20}

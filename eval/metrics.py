@@ -109,8 +109,10 @@ def judged_scores(results: list[QuestionResult]) -> dict[str, float | int | None
     faithful = [r.faithfulness for r in results if r.status == "answered"]
     scored_c = [c for c in correctness if c is not None]
     scored_f = [f for f in faithful if f is not None]
+    judged_any = any(r.correctness is not None for r in answerable if r.status == "answered")
     return {
-        "correctness": mean(scored_c) if scored_c else None,
+        # Not-answered zeros alone aren't a correctness score: unknown until the judge scored one.
+        "correctness": mean(scored_c) if judged_any else None,
         "faithfulness": mean(scored_f) if scored_f else None,
         "judge_unscored": correctness.count(None) + faithful.count(None),
     }
