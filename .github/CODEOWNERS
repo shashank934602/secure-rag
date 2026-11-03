@@ -1,0 +1,7 @@
+# The eval gate grades every change, so the gate itself, its datasets and thresholds, the guards,
+# and CI need the owner's review. Enforced once "Require review from Code Owners" is on for `main`
+# (ISS-063, tester v0.7.0 T-4).
+/eval/ @shashank934602
+/.github/ @shashank934602
+/app/guards/ @shashank934602
+/app/config.py @shashank934602

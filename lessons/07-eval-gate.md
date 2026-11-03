@@ -85,7 +85,8 @@ to 71.1% (the classifier's scores are mostly near 0 or near 1). The floor barely
 the per-case check sees it.
 
 **Borderline flips:** CI runs the model on a Linux CPU, this baseline on an Apple GPU; a score of 0.51 can come out 0.49. A
-flip where both scores sit within 0.05 of the threshold is a warning, not a failure. Only 4 attacks are that close.
+flip where both scores sit within 0.05 of the threshold is a warning, not a failure. 4 attack cases are that close, and only
+2 of them (a193, i43) are blocked, so only 2 could ever flip into a false alarm. The first CI run on Linux passed: no flips.
 
 **The exam can't be edited by the student:** outside `main`, the gate reads the thresholds and baseline **from `main`**. A
 branch that weakens a guard *and* lowers the floor still fails, because its lower floor only counts once merged.
@@ -104,6 +105,9 @@ judge, so the guard doesn't grade itself; a different family from the generator)
 | p50 / p95 latency | 3.4 s / 8.6 s | p95 ≤ 8 s ✗ |
 | Tokens / cost per question | 2,838 / **$0.00047** at list price | |
 
+The judge couldn't score 2 of the 22 judgements (its reply was unreadable twice): reported as `judge_unscored: 2`, never
+guessed. Latency: one generator call took 52 s during the tester's run (free tier); p95 is the number to watch.
+
 Read it together: everything the system *says* is supported by its documents (faithfulness 1.0), but it says "I don't know"
 to 3 answerable questions (g06, g17 two-hop; g16 a comparison the grounding judge rejects, ISS-017, ISS-049), and those count
 as 0 correctness. **The system errs on the side of silence** — the right failure for a security product, and now a number.
@@ -120,6 +124,25 @@ documents?". Two short prompts we can read (`eval/prompts/`), versioned and pinn
   (`--judge-report`) without asking the generator again: retrieval and the guards are deterministic, so what the model saw
   can be rebuilt exactly.
 
+## 7. Proof, and what the tester broke
+
+**The done-when, for real:** a demo branch raised the threshold to 0.9 *and* lowered the floor to 0.60 in the same commit.
+GitHub ran the gate on its own: **Security gate: failure** (run 41609303375): the bar came from `main` (floor 0.72, not 0.60),
+block rate 0.711, and 9 named attacks that used to be blocked. Lint, tests, and database tests all passed: a weakened guard
+breaks no unit test, which is exactly why the eval gate exists.
+
+**The independent tester then found two weakenings the gate missed** (`docs/test-reports/v0.7.0.md`), fixed before release:
+- **Switching a guard off** (`INPUT_GUARD=false`) passed: the eval built the guard regardless of the switch. Now the eval
+  builds guards exactly as the app does, and the switches are pinned. Re-run: pin fails, both floors fail, 274 regressions.
+- **Deleting the attacks that now pass** hid the regression. Now a baseline-blocked attack that is missing, or whose text
+  changed (a fingerprint per case), is a regression.
+- Also: pins are checked against what the report *measured*, not just this machine's settings; settings that changed since
+  the baseline are listed (so "0.726 → 0.726" now says "threshold 0.5 → 0.9"); API keys reach only the steps that call a
+  model; `CODEOWNERS` covers the gate, its data, the guards, and CI.
+
+Lesson: **a gate is itself code under attack.** Its first tester found holes in a day. The remaining one (a branch can edit
+the gate's own code) is closed by review, not code: `CODEOWNERS` + "require review from Code Owners" (ISS-063).
+
 ## Explain it back (later)
 
 1. Why did 50 cases say 90% blocked and 232 say 74%? Which number would you put on your CV, and how would you phrase it?
@@ -127,5 +150,6 @@ documents?". Two short prompts we can read (`eval/prompts/`), versioned and pinn
 3. Why can't the gate just check "block rate ≥ 0.72"? Give the example that slips through.
 4. Why is the bar read from `main` and not from the branch being tested?
 5. Why report the public benchmark but not gate on it?
-6. "Ignore the previous version of this form" was dropped by the context guard. Is that a security problem or a quality
+6. Name two ways to weaken security that a floor on the block rate can't see, and how the gate catches each.
+7. "Ignore the previous version of this form" was dropped by the context guard. Is that a security problem or a quality
    problem, and who pays for it?

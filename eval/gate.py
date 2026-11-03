@@ -54,6 +54,7 @@ class GateResult:
     regressions: list[dict] = field(default_factory=list)  # per-case, blocking
     warnings: list[str] = field(default_factory=list)
     diff: list[dict] = field(default_factory=list)  # metric, baseline, current, delta
+    config_changes: list[dict] = field(default_factory=list)  # setting, baseline, current
     bar_from: str = "working tree"
 
     @property
@@ -86,22 +87,39 @@ def load_bar(suite: str, ref: str | None = None) -> tuple[dict, dict | None]:
 # --- checks -----------------------------------------------------------------------------------
 
 
-def pin_checks(settings: Settings, pins: dict) -> list[Check]:
-    """Every pinned model must be what the configuration actually uses (hard)."""
+def pin_checks(settings: Settings, pins: dict, measured: dict | None = None) -> list[Check]:
+    """Every pinned model and switch must be what the configuration uses AND what the report says
+    it measured (hard): a report produced with another model or with a guard off doesn't count
+    (tester v0.7.0 T-1, T-3)."""
     checks = []
     for name, pinned in pins.items():
         actual = getattr(settings, name, None)
+        problems = [] if actual == pinned else [f"configured {actual!r}"]
+        if measured and name in measured and measured[name] != pinned:
+            problems.append(f"report measured {measured[name]!r}")
         checks.append(
             Check(
                 f"pin: {name}",
                 "hard",
                 actual,
                 pinned,
-                actual == pinned,
-                "" if actual == pinned else "re-baseline before changing a pin",
+                not problems,
+                "; ".join(problems + ["re-baseline before changing a pin"]) if problems else "",
             )
         )
     return checks
+
+
+def config_changes(report: dict, baseline: dict | None) -> list[dict]:
+    """Settings that differ between the baseline run and this one (e.g. a threshold)."""
+    if not baseline:
+        return []
+    before, now = baseline.get("config") or {}, report.get("config") or {}
+    return [
+        {"setting": key, "baseline": before.get(key), "current": now.get(key)}
+        for key in sorted(set(before) | set(now))
+        if before.get(key) != now.get(key)
+    ]
 
 
 def _value(summary: dict, metric: str) -> float | None:
@@ -145,17 +163,30 @@ def case_regressions(
     for before in baseline["rows"]:
         if before["kind"] != "attack" or before["source"] != "own" or not before["blocked"]:
             continue
+        if before["id"] in allowed:
+            continue
         after = now.get((before["set"], before["id"]))
-        if after is not None and not after["blocked"] and before["id"] not in allowed:
+        case = {
+            "set": before["set"],
+            "id": before["id"],
+            "category": before["category"],
+            "score_before": before["score"],
+            "borderline": False,
+        }
+        if after is None:  # deleting a case must not hide a regression (tester v0.7.0 T-2)
+            regressions.append({**case, "score_now": None, "why": "case missing from this run"})
+        elif before.get("text_sha") and after.get("text_sha") != before["text_sha"]:
+            regressions.append({**case, "score_now": after["score"], "why": "case text changed"})
+        elif not after["blocked"]:
+            borderline = _near(before["score"], t_before, margin) and _near(
+                after["score"], t_now, margin
+            )
             regressions.append(
                 {
-                    "set": before["set"],
-                    "id": before["id"],
-                    "category": before["category"],
-                    "score_before": before["score"],
+                    **case,
                     "score_now": after["score"],
-                    "borderline": _near(before["score"], t_before, margin)
-                    and _near(after["score"], t_now, margin),
+                    "borderline": borderline,
+                    "why": "blocked before, passes now",
                 }
             )
     return regressions
@@ -198,13 +229,14 @@ def gate(
 ) -> GateResult:
     rules = thresholds[suite]
     result = GateResult(suite)
-    result.checks += pin_checks(settings, thresholds["pins"])
+    result.checks += pin_checks(settings, thresholds["pins"], report.get("config"))
     result.checks += limit_checks(report["summary"], rules)
     for metric, limit in (rules.get("hard") or {}).items():  # e.g. leaks: 0, errors: 0
         value = report.get(metric, report["summary"].get(metric))
         value = _value({"v": value}, "v")
         passed = value is not None and float(value) <= float(limit)
         result.checks.append(Check(metric, "hard", value, limit, passed))
+    result.config_changes = config_changes(report, baseline)
     if suite == "security":
         allowed = rules.get("allowed_regressions") or {}
         margin = float(rules.get("borderline_margin", 0.0))
@@ -243,7 +275,7 @@ def gate(
 
 def _fmt(value: object) -> str:
     if isinstance(value, float):
-        return f"{value:.3f}"
+        return f"{value:.3f}" if value == 0 or abs(value) >= 0.01 else f"{value:.2g}"
     return "–" if value is None else str(value)
 
 
@@ -261,11 +293,23 @@ def render_markdown(result: GateResult) -> str:
         mark = "✅" if c.passed else ("⚠️ missed" if c.kind == "target" else "❌")
         lines.append(f"| {c.name} | {c.kind} | {_fmt(c.value)} | {_fmt(c.limit)} | {mark} |")
     if result.regressions:
-        lines += ["", "### Per-case regressions (blocked before, pass now)", ""]
+        lines += ["", "### Per-case regressions", ""]
         lines += [
-            f"- `{r['set']}` **{r['id']}** [{r['category']}] score "
+            f"- `{r['set']}` **{r['id']}** [{r['category']}] {r['why']}: score "
             f"{_fmt(r['score_before'])} → {_fmt(r['score_now'])}"
             for r in result.regressions
+        ]
+    if result.config_changes:
+        lines += [
+            "",
+            "### Settings changed since the baseline",
+            "",
+            "| Setting | Baseline | Now |",
+            "|---|---|---|",
+        ]
+        lines += [
+            f"| {c['setting']} | {_fmt(c['baseline'])} | {_fmt(c['current'])} |"
+            for c in result.config_changes
         ]
     if result.diff:
         lines += [
@@ -329,9 +373,19 @@ def render_html(result: GateResult, report: dict) -> str:
     )
     regressions = "".join(
         f"<li><b>{html.escape(r['id'])}</b> ({html.escape(r['set'])}, "
-        f"{html.escape(r['category'])}): {_fmt(r['score_before'])} → "
+        f"{html.escape(r['category'])}) {html.escape(r['why'])}: {_fmt(r['score_before'])} → "
         f"{_fmt(r['score_now'])}</li>"
         for r in result.regressions
+    )
+    changes = "".join(
+        row(
+            [
+                html.escape(c["setting"]),
+                html.escape(_fmt(c["baseline"])),
+                html.escape(_fmt(c["current"])),
+            ]
+        )
+        for c in result.config_changes
     )
     warnings = "".join(f"<li>{html.escape(w)}</li>" for w in result.warnings[:200])
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -343,6 +397,11 @@ def render_html(result: GateResult, report: dict) -> str:
 <h2>Checks</h2><table><tr><th>Check</th><th>Kind</th><th>Value</th><th>Limit</th><th>Result</th>
 </tr>{checks}</table>
 <h2>Per-case regressions</h2>{f"<ul>{regressions}</ul>" if regressions else "<p>None.</p>"}
+<h2>Settings changed since the baseline</h2>{
+        f"<table><tr><th>Setting</th><th>Baseline</th><th>Now</th></tr>{changes}</table>"
+        if changes
+        else "<p>None.</p>"
+    }
 <h2>Diff against the baseline</h2><table><tr><th>Metric</th><th>Baseline</th><th>Now</th>
 <th>Δ</th></tr>{diff}</table>
 <h2>Warnings</h2>{f"<ul>{warnings}</ul>" if warnings else "<p>None.</p>"}
@@ -379,7 +438,11 @@ def main(argv: list[str] | None = None) -> int:
     settings = get_settings()
     thresholds, baseline = load_bar(args.suite, args.from_ref)
     if args.report:
-        report = json.loads(Path(args.report).read_text(encoding="utf-8"))
+        try:
+            report = json.loads(Path(args.report).read_text(encoding="utf-8"))
+            report["summary"]
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            parser.error(f"can't read report {args.report!r}: {type(error).__name__}")
     elif args.suite == "security":
         from eval.run import _git_commit
         from eval.security import build_report, evaluate, injection_classifier, write_report

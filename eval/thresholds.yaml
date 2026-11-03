@@ -7,8 +7,8 @@
 #   targets            the architecture's goals (§9): reported as met or missed, never failing
 #   hard               must hold exactly (e.g. 0 errors)
 
-# Exact models the numbers depend on. The gate fails if the configuration differs: change a pin
-# only together with a new baseline.
+# Exact models and settings the numbers depend on. The gate fails if the configuration, or the
+# report being gated, differs: change a pin only together with a new baseline.
 pins:
   chat_model: groq:openai/gpt-oss-120b
   embedding_model: mistralai:mistral-embed
@@ -18,6 +18,15 @@ pins:
   injection_revision: 90c9989b1a342275dd0d1a95aad283c04e075671
   reranker_model: BAAI/bge-reranker-base
   reranker_revision: 2cfc18c9415c912f9d8155881c133215df768a70
+  # Switches and settings the numbers depend on: a guard turned off, or a threshold moved, is a
+  # change to the bar, not a code change (tester v0.7.0 T-1).
+  input_guard: true
+  context_guard: true
+  grounding_judge: true
+  injection_threshold: 0.5
+  rerank: true
+  retrieval_mode: hybrid
+  top_k: 5
 
 security:  # python -m eval.security; own cases, test split; deterministic
   baseline: eval/baselines/security.json

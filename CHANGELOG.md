@@ -23,6 +23,13 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - Quality baseline `eval/baselines/phase7.json`: recall@5 0.929, MRR 1.000, key facts 0.786, No-Answer 6/6, **correctness 0.667** (0.85 on answered questions), **faithfulness 1.000**, p50/p95 3.4/8.6 s, **$0.00047 per question** at list price (2,838 tokens); floors in `eval/thresholds.yaml` (ISS-061).
 - GitHub Actions (`.github/workflows/ci.yml`): lint + offline tests, database tests, the security gate, and the quality gate (runs when the API-key secrets exist) (ISS-062).
 
+### Fixed (from the independent test, `docs/test-reports/v0.7.0.md`)
+
+- Switching a guard off (`INPUT_GUARD=false`, `CONTEXT_GUARD=false`) passed the security gate; the eval now builds guards exactly as the app does, and the guard switches, threshold, reranking, and retrieval settings are pinned (T-1).
+- Deleting or rewriting attack cases could hide regressions; a baseline-blocked attack that is missing, or whose text fingerprint changed, is now a regression (T-2).
+- Pins are checked against the gated report's own config, not only the local settings (T-3); the reports list settings changed since the baseline and print small costs correctly (T-6); an unreadable `--report` is a clear error (T-7).
+- CI: API keys reach only the steps that call a model; the quality job runs on `main` and pull requests only; its path filter includes dependencies and `.github/`; a crashed eval run fails the job; `CODEOWNERS` for the gate, datasets, guards, and CI (T-4, T-5, T-8).
+
 ### Changed
 
 - Models are pinned to exact versions: the grounding judge is `ministral-8b-2512` (was `-latest`); the injection classifier and reranker load fixed Hugging Face commits (`injection_revision`, `reranker_revision`).

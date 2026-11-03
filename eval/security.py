@@ -16,7 +16,7 @@ from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 
 from app.config import ROOT, Settings, get_settings
-from app.domain import Chunk, ScoredChunk
+from app.domain import Chunk, GuardVerdict, ScoredChunk
 from app.guards.context import ContextGuard
 from app.guards.injection import InjectionClassifier, InputGuard, injection_classifier
 from app.ingestion.chunking import chunk_pages
@@ -58,11 +58,23 @@ def rate(hits: int, n: int) -> dict:
 # --- running the guards -----------------------------------------------------------------------
 
 
-def input_rows(guard: InputGuard, cases: Iterable[dict], *, kind: str, source: str) -> list[dict]:
-    """One row per case: was it blocked, by what, with what score."""
+def text_sha(text: str) -> str:
+    """A short fingerprint of a case's text: a case quietly rewritten in a branch is caught."""
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
+def input_rows(
+    guard: InputGuard | None, cases: Iterable[dict], *, kind: str, source: str
+) -> list[dict]:
+    """One row per case: was it blocked, by what, with what score. No guard (switched off in the
+    settings) blocks nothing, exactly as in the app (tester v0.7.0 T-1)."""
     rows = []
     for case in cases:
-        verdict = guard.check(case["text"])
+        verdict = (
+            guard.check(case["text"])
+            if guard
+            else GuardVerdict(guard="input", decision="ALLOW", reason="guard off")
+        )
         rows.append(
             {
                 "id": case["id"],
@@ -74,22 +86,26 @@ def input_rows(guard: InputGuard, cases: Iterable[dict], *, kind: str, source: s
                 "blocked": verdict.decision == "BLOCK",
                 "reason": verdict.reason,
                 "score": verdict.score,
+                "text_sha": text_sha(case["text"]),
             }
         )
     return rows
 
 
 def context_rows(
-    guard: ContextGuard, passages: Iterable[tuple[str, str, str, str]], *, source: str
+    guard: ContextGuard | None, passages: Iterable[tuple[str, str, str, str]], *, source: str
 ) -> list[dict]:
-    """Each passage (id, kind, category, text) as one retrieved chunk: was it dropped?"""
+    """Each passage (id, kind, category, text) as one retrieved chunk: was it dropped? No guard
+    (switched off) drops nothing."""
     rows = []
     for case_id, kind, category, text in passages:
         chunk = Chunk(id=case_id, doc_id=case_id, source=source, page=1, text=text)
-        _, verdicts = guard.check([ScoredChunk(chunk=chunk, score=1.0)], scope=None)
+        verdicts = (
+            guard.check([ScoredChunk(chunk=chunk, score=1.0)], scope=None)[1] if guard else []
+        )
         drop = next((v for v in verdicts if v.decision == "DROP"), None)
         score = drop.score if drop else None
-        if drop is None and guard.classifier is not None:  # kept: record how close it came
+        if drop is None and guard and guard.classifier is not None:  # kept: how close it came
             score = round(guard.classifier.score(text), 4)
         rows.append(
             {
@@ -102,6 +118,7 @@ def context_rows(
                 "blocked": drop is not None,
                 "reason": drop.reason if drop else "",
                 "score": score,
+                "text_sha": text_sha(text),
             }
         )
     return rows
@@ -175,6 +192,8 @@ def build_report(rows: list[dict], settings: Settings, commit: str | None) -> di
             "injection_model": settings.injection_model,
             "injection_revision": settings.injection_revision,
             "injection_threshold": settings.injection_threshold,
+            "input_guard": settings.input_guard,
+            "context_guard": settings.context_guard,
         },
         "summary": summarise(rows),
         "rows": rows,
@@ -188,8 +207,12 @@ def evaluate(
     progress: Callable[[str], None] = lambda _: None,
 ) -> list[dict]:
     """Run both guards over every set (the slow part: about a thousand classifier calls)."""
-    input_guard = InputGuard(classifier, settings.injection_threshold)
-    context_guard = ContextGuard(classifier, settings.injection_threshold)
+    # Built exactly as the app builds them (build_answerer): a switched-off guard isn't there.
+    classifier = classifier if settings.input_guard else None
+    input_guard = InputGuard(classifier, settings.injection_threshold) if classifier else None
+    context_guard = (
+        ContextGuard(classifier, settings.injection_threshold) if settings.context_guard else None
+    )
     progress("input guard: own sets")
     rows = input_rows(input_guard, load_jsonl("adversarial.jsonl"), kind="attack", source="own")
     rows += input_rows(input_guard, load_jsonl("benign.jsonl"), kind="benign", source="own")

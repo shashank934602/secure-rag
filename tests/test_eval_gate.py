@@ -133,3 +133,77 @@ def test_a_borderline_flip_is_a_warning_not_a_regression() -> None:
 
     assert result.regressions == []
     assert any(w.startswith("borderline flip") for w in result.warnings)
+
+
+# --- tester v0.7.0 findings ---------------------------------------------------------------------
+
+
+def test_a_switched_off_guard_blocks_nothing_and_fails_the_gate() -> None:
+    # T-1: INPUT_GUARD=false used to pass, because the eval built the guard regardless.
+    baseline = _report(attack_score=0.9)
+    rows = input_rows(None, ATTACKS, kind="attack", source="own")
+    rows += input_rows(None, BENIGN, kind="benign", source="own")
+    off = {"summary": summarise(rows), "rows": rows}
+
+    result = gate("security", off, _thresholds(), baseline, SETTINGS)
+
+    assert not result.passed and len(result.regressions) == len(ATTACKS)
+    assert all(r["reason"] == "guard off" for r in rows)
+
+
+def test_a_switch_that_differs_from_its_pin_fails() -> None:
+    thresholds = _thresholds()
+    thresholds["pins"]["input_guard"] = True
+    off = Settings(_env_file=None, input_guard=False)
+    result = gate("security", _report(0.9), thresholds, _report(0.9), off)
+    assert [c.name for c in result.checks if not c.passed] == ["pin: input_guard"]
+
+
+def test_a_report_measured_with_another_setting_fails_its_pin() -> None:
+    # T-3: the pins must hold for the run being gated, not only for this machine's settings.
+    report = _report(0.9)
+    report["config"] = {"chat_model": "groq:some-other-model"}
+    result = gate("security", report, _thresholds(), _report(0.9), SETTINGS)
+    failed = [c for c in result.checks if not c.passed]
+    assert [c.name for c in failed] == ["pin: chat_model"]
+    assert "report measured" in failed[0].detail
+
+
+def test_deleting_or_rewriting_a_blocked_attack_is_a_regression() -> None:
+    # T-2: removing the cases that now pass used to hide the regression.
+    baseline = _report(attack_score=0.9)
+    current = _report(attack_score=0.9)
+    first, second = [r for r in current["rows"] if r["kind"] == "attack"][:2]
+    current["rows"].remove(first)
+    second["text_sha"] = "0" * 16  # same id, different text
+
+    result = gate("security", current, _thresholds(), baseline, SETTINGS)
+
+    whys = {r["id"]: r["why"] for r in result.regressions}
+    assert whys == {first["id"]: "case missing from this run", second["id"]: "case text changed"}
+    assert not result.passed
+
+
+def test_settings_changed_since_the_baseline_are_listed() -> None:
+    # T-6: a threshold change showed scores "0.726 → 0.726" with no reason why.
+    baseline, current = _report(0.9), _report(0.9)
+    baseline["config"], current["config"] = (
+        {"injection_threshold": 0.5},
+        {"injection_threshold": 0.9},
+    )
+    result = gate("security", current, _thresholds(), baseline, SETTINGS)
+    assert result.config_changes == [
+        {"setting": "injection_threshold", "baseline": 0.5, "current": 0.9}
+    ]
+
+
+def test_an_unreadable_report_is_a_clear_error_not_a_traceback(tmp_path, capsys) -> None:
+    # T-7
+    import pytest
+
+    from eval.gate import main
+
+    with pytest.raises(SystemExit) as stop:
+        main(["quality", "--report", str(tmp_path / "missing.json")])
+    assert stop.value.code == 2
+    assert "can't read report" in capsys.readouterr().err

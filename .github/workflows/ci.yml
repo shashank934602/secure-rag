@@ -4,11 +4,14 @@
 #   db             database tests in a throwaway Postgres: RLS, the ACL-change check, the audit trail
 #   security-gate  input + context guard over the eval sets (local models, no keys): fails on a
 #                  per-case regression, a floor or ceiling, or a model that differs from its pin
-#   quality-gate   golden set + leakage with the real models; needs the GROQ_API_KEY and
-#                  MISTRAL_API_KEY repository secrets, otherwise it reports "skipped"
+#   quality-gate   golden set + leakage with the real models, on `main` and on pull requests; needs
+#                  the GROQ_API_KEY and MISTRAL_API_KEY repository secrets, otherwise it reports
+#                  "skipped" (a skipped job still shows green: read its summary)
 #
 # Outside `main`, the bar (eval/thresholds.yaml + baselines) is read from `main`, so a change
-# can't lower its own bar.
+# can't lower its own bar. The gate's code and datasets are still branch-controlled: CODEOWNERS
+# plus "require review from Code Owners" on `main` closes that (ISS-063, tester v0.7.0 T-4).
+# The API keys reach only the steps that call a model, never dependency installation (T-5).
 name: CI
 
 on:
@@ -94,6 +97,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     needs: tests
+    # Not on every branch push: model calls cost the shared free-tier budget (ISS-064), and keys
+    # should reach as little code as possible. Pull requests from forks get no secrets.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     services:
       db:
         image: pgvector/pgvector:0.8.7-pg16
@@ -106,8 +112,6 @@ jobs:
           --health-cmd "pg_isready -U postgres -d rag" --health-interval 2s
           --health-timeout 3s --health-retries 30
     env:
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
       DATABASE_ADMIN_URL: postgresql://postgres:ci-throwaway-admin@localhost:5432/rag
       DATABASE_URL: postgresql://rag_app:ci-throwaway-app@localhost:5432/rag
     steps:
@@ -116,17 +120,19 @@ jobs:
           fetch-depth: 0
       - name: Should it run?
         id: should
+        env:
+          HAS_KEYS: ${{ secrets.GROQ_API_KEY != '' && secrets.MISTRAL_API_KEY != '' }}
         run: |
-          if [ -z "$GROQ_API_KEY" ] || [ -z "$MISTRAL_API_KEY" ]; then
+          if [ "$HAS_KEYS" != "true" ]; then
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "### Quality gate skipped: add the GROQ_API_KEY and MISTRAL_API_KEY repository secrets (ISS-063)" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            CHANGED=$(git diff --name-only "origin/$GITHUB_BASE_REF...HEAD" | grep -E '^(app|eval|data|db)/' || true)
+            CHANGED=$(git diff --name-only "origin/$GITHUB_BASE_REF...HEAD" | grep -E '^(app|eval|data|db|\.github)/|^(pyproject\.toml|uv\.lock)$' || true)
             if [ -z "$CHANGED" ]; then
               echo "run=false" >> "$GITHUB_OUTPUT"
-              echo "### Quality gate skipped: no change under app/, eval/, data/, or db/" >> "$GITHUB_STEP_SUMMARY"
+              echo "### Quality gate skipped: no change to app/, eval/, data/, db/, .github/, or dependencies" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
           fi
@@ -147,6 +153,8 @@ jobs:
           restore-keys: hf-
       - name: Database and documents
         if: steps.should.outputs.run == 'true'
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }} # embeddings
         run: |
           uv run alembic -c db/alembic.ini upgrade head
           uv run python -m app.ingest
@@ -155,15 +163,22 @@ jobs:
           uv run python -m app.ingest --tenant "Northgate Haulage" --folder data/tenants/northgate
       - name: Leakage (any leak fails)
         if: steps.should.outputs.run == 'true'
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: uv run python -m eval.leakage
       - name: Golden set and gate
         if: steps.should.outputs.run == 'true'
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: |
           REF=""
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then REF="origin/$GITHUB_BASE_REF";
           elif [ "$GITHUB_REF_NAME" != "main" ]; then REF="origin/main"; fi
-          uv run python -m eval.run --pause 3 | tee run.log || true
+          uv run python -m eval.run --pause 3 | tee run.log || true  # errors are gated below
           REPORT=$(grep '^report:' run.log | awk '{print $2}')
+          if [ -z "$REPORT" ]; then echo "eval.run crashed before writing a report"; exit 1; fi
           uv run python -m eval.gate quality --report "$REPORT" ${REF:+--from-ref "$REF"}
       - name: Keep the reports
         if: always() && steps.should.outputs.run == 'true'
