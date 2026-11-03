@@ -195,7 +195,10 @@ def build_answerer(
         )
         retriever = ChunkIndex(chunks, embeddings or make_embeddings(settings.embedding_model))
     model = chat_model or init_chat_model(
-        settings.chat_model, temperature=settings.chat_temperature
+        settings.chat_model,
+        temperature=settings.chat_temperature,
+        timeout=settings.chat_timeout_s,  # never hang on a provider (tester T-4)
+        max_retries=1,
     )
     if reranker is None and settings.rerank:
         reranker = CrossEncoderReranker(settings.reranker_model)

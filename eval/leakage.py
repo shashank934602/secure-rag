@@ -85,10 +85,27 @@ def _scope(tenant: str, roles: list[str]) -> AccessScope:
     return AccessScope(tenant_id=str(tenant_id), roles=roles)
 
 
-def run(answerer: Answerer, pause_s: float = 2.0) -> list[dict]:
+def _answer(answerer: Answerer, probe: Probe, wait_s: float) -> AnswerResult | None:
+    """Ask once, and once more after a wait if a provider refuses (free-tier rate limits,
+    tester T-5). None means the probe couldn't run: reported, and the run fails."""
+    for attempt in range(2):
+        try:
+            return answerer.answer(probe.question, scope=_scope(probe.tenant, probe.roles))
+        except Exception:
+            if attempt == 0:
+                time.sleep(wait_s)
+    return None
+
+
+def run(answerer: Answerer, pause_s: float = 2.0, wait_s: float = 30.0) -> list[dict]:
     rows = []
     for probe in PROBES:
-        result = answerer.answer(probe.question, scope=_scope(probe.tenant, probe.roles))
+        result = _answer(answerer, probe, wait_s)
+        if result is None:
+            rows.append({"kind": probe.kind, "as": f"{probe.tenant} {probe.roles}",
+                         "question": probe.question, "status": "error", "retrieved": [],
+                         "problems": ["could not run (provider error twice)"]})  # fmt: skip
+            continue
         retrieved = [hit.chunk.doc_id for hit in result.retrieved]
         if probe.kind == "control":
             problems = (

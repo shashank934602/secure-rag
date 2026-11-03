@@ -226,3 +226,16 @@ def test_at_the_threshold_the_llm_is_asked() -> None:
 
     assert built.answer("leave?").status == "answered"
     assert len(model.calls) == 1
+
+
+def test_the_chat_model_has_a_time_limit(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Tester finding T-4 (v0.5.0): a network failure made one request hang for over 90 s.
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    (tmp_path / "leave-policy.md").write_text("25 days of leave.")
+    settings = Settings(corpus_dir=tmp_path, chat_timeout_s=30, input_guard=False,
+                        grounding_judge=False)  # fmt: skip
+
+    built = build_answerer(settings, embeddings=KeywordEmbeddings(VOCAB))
+
+    assert built.chat_model.request_timeout == 30
+    assert built.chat_model.max_retries == 1

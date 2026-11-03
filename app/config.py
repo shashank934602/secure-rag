@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # Models: "provider:model" strings, passed to init_chat_model / the embeddings factory.
     chat_model: str = "groq:openai/gpt-oss-120b"
     chat_temperature: float = 0.0
+    chat_timeout_s: float = 30.0  # a network failure must not hang a request (tester T-4)
     embedding_model: str = "mistralai:mistral-embed"  # 1024 numbers per text (ADR-0005)
 
     # Corpus and chunking (spec 01 D1, D13).

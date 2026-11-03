@@ -255,3 +255,51 @@ def test_a_guard_outage_is_a_503() -> None:
         response = client.post("/v1/ask", json={"question": "How much leave?"})
 
     assert response.status_code == 503  # fail closed: no answer without the guard
+
+
+# --- tester findings on v0.5.0 (T-1, T-3, T-5), fixed in v0.5.1 ---------------------------------
+
+
+def test_openapi_documents_every_error_response() -> None:
+    # T-1: clients and Swagger readers must see the 401/403/404/503 the API really returns.
+    with _client() as client:
+        paths = client.get("/openapi.json").json()["paths"]
+    assert {"200", "401", "422", "503"} <= set(paths["/v1/ask"]["post"]["responses"])
+    acl = set(paths["/v1/documents/{doc_id}/acl"]["patch"]["responses"])
+    assert {"200", "401", "403", "404", "422", "503"} <= acl
+    assert {"200", "503"} <= set(paths["/healthz"]["get"]["responses"])
+
+
+def test_an_oversized_body_is_refused_before_it_is_read() -> None:
+    # T-3: 5 MB questions were parsed and echoed back; now anything over 16 KB is a 413.
+    with _client(NO_ANSWER) as client:
+        response = client.post("/v1/ask", json={"question": "x" * 50_000})
+    assert response.status_code == 413
+    assert len(response.content) < 200
+
+
+def test_validation_errors_do_not_echo_the_input() -> None:
+    # T-3: a 422 says what is wrong, without copying the user's text back.
+    with _client(NO_ANSWER) as client:
+        response = client.post("/v1/ask", json={"question": "secret-ish " * 120})
+    assert response.status_code == 422
+    assert "secret-ish" not in response.text
+    assert response.json()["detail"][0]["loc"] == ["body", "question"]
+
+
+def test_head_healthz_works_for_load_balancers() -> None:
+    with _client() as client:
+        assert client.head("/healthz").status_code == 200
+
+
+def test_a_503_tells_the_client_when_to_retry() -> None:
+    # T-5: provider rate limits and outages are temporary; say so.
+    from app.guards.injection import InputGuard
+    from tests.test_input_guard import FakeClassifier
+
+    answerer = _answerer()
+    answerer.input_guard = InputGuard(FakeClassifier(broken=True))
+    with _test_client(lambda: answerer, lambda: None) as client:
+        response = client.post("/v1/ask", json={"question": "How much leave?"})
+    assert response.status_code == 503
+    assert response.headers["retry-after"] == "30"

@@ -20,6 +20,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg_pool import ConnectionPool
@@ -35,6 +36,28 @@ from app.domain import AnswerResult, User
 log = logging.getLogger(__name__)
 
 UNAVAILABLE = "The assistant is temporarily unavailable. Try again."
+RETRY_AFTER = {"Retry-After": "30"}  # a 503 is temporary (outage, provider rate limit)
+MAX_BODY_BYTES = 16_384  # a 1,000-character question fits many times over (tester T-3)
+
+
+class ErrorOut(BaseModel):
+    detail: str
+
+
+def _error_docs(*codes: int) -> dict:
+    """OpenAPI entries for the error responses a route really returns (tester T-1)."""
+    meaning = {
+        401: "Missing, invalid, or expired token",
+        403: "The user lacks the permission",
+        404: "Not found in the user's tenant",
+        413: "Request body too large",
+        503: "Temporarily unavailable (a guard, model, or the database); retry later",
+    }
+    return {code: {"model": ErrorOut, "description": meaning[code]} for code in codes}
+
+
+def _unavailable() -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": UNAVAILABLE}, headers=RETRY_AFTER)
 
 
 # Surrounding spaces are removed first, so "   " counts as empty (spec 02 D7: 1–1,000 chars).
@@ -101,9 +124,25 @@ def create_app(
         app.state.authenticate = authenticator()
         yield
 
-    app = FastAPI(title="Secure RAG Assistant", version="0.4.0", lifespan=lifespan)
+    app = FastAPI(title="Secure RAG Assistant", version="0.5.1", lifespan=lifespan)
 
-    @app.post("/v1/ask", response_model=AskResponse)
+    @app.middleware("http")
+    async def limit_body_size(request: Request, call_next):
+        # Refuse big bodies from their declared length, before anything reads them (tester T-3).
+        length = request.headers.get("content-length")
+        if length and length.isdigit() and int(length) > MAX_BODY_BYTES:
+            return JSONResponse(status_code=413, content={"detail": "Request body too large"})
+        return await call_next(request)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, error: RequestValidationError) -> JSONResponse:
+        # Say what is wrong and where, without echoing the user's input back (tester T-3).
+        problems = [
+            {"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in error.errors()
+        ]
+        return JSONResponse(status_code=422, content={"detail": problems})
+
+    @app.post("/v1/ask", response_model=AskResponse, responses=_error_docs(401, 413, 503))
     def ask(
         body: AskRequest, request: Request, user: Annotated[User, Depends(current_user)]
     ) -> AskResponse | JSONResponse:
@@ -114,10 +153,10 @@ def create_app(
             # Log the failure type only: never the question (Invariant 5) or the error text,
             # which can contain keys or internal details. The caller gets a generic message.
             log.error("ask failed request_id=%s error=%s", request_id, type(error).__name__)
-            return JSONResponse(status_code=503, content={"detail": UNAVAILABLE})
+            return _unavailable()
         return _response(result, request_id)
 
-    @app.patch("/v1/documents/{doc_id}/acl")
+    @app.patch("/v1/documents/{doc_id}/acl", responses=_error_docs(401, 403, 404, 413, 503))
     def update_acl(
         body: AclChange,
         user: Annotated[User, Depends(current_user)],
@@ -129,17 +168,23 @@ def create_app(
             return JSONResponse(status_code=error.status, content={"detail": error.detail})
         except Exception as error:
             log.error("acl change failed error=%s", type(error).__name__)
-            return JSONResponse(status_code=503, content={"detail": UNAVAILABLE})
+            return _unavailable()
         return JSONResponse(status_code=200, content=changed)
 
-    @app.get("/healthz")
+    @app.get("/healthz", responses=_error_docs(503))
     def healthz() -> JSONResponse:
         try:
             health_check()
         except Exception as error:
             log.error("healthz failed error=%s", type(error).__name__)
-            return JSONResponse(status_code=503, content={"status": "unavailable"})
+            return JSONResponse(
+                status_code=503, content={"status": "unavailable"}, headers=RETRY_AFTER
+            )
         return JSONResponse(status_code=200, content={"status": "ok"})
+
+    @app.head("/healthz", include_in_schema=False)  # for load balancers (tester T-3)
+    def healthz_head() -> JSONResponse:
+        return healthz()
 
     return app
 
@@ -160,7 +205,7 @@ def current_user(
         raise _unauthorized() from None
     except Exception as error:  # e.g. the database is down: refuse, but don't blame the token
         log.error("auth failed error=%s", type(error).__name__)
-        raise HTTPException(status_code=503, detail=UNAVAILABLE) from None
+        raise HTTPException(status_code=503, detail=UNAVAILABLE, headers=RETRY_AFTER) from None
 
 
 def _unauthorized() -> HTTPException:
