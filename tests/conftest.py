@@ -53,6 +53,14 @@ def _clean_database(request: pytest.FixtureRequest) -> Iterator[None]:
 
     urls: PgUrls = request.getfixturevalue("pg")
     with psycopg.connect(urls.admin, autocommit=True) as admin:
+        # Audit rows are append-only even for the admin, so the wipe switches the rule off briefly.
+        admin.execute("ALTER TABLE audit_events DISABLE TRIGGER USER")
+        try:
+            admin.execute("DELETE FROM audit_events")
+        finally:
+            admin.execute("ALTER TABLE audit_events ENABLE TRIGGER USER")
+        admin.execute("DELETE FROM request_sources")
+        admin.execute("DELETE FROM requests")
         admin.execute("DELETE FROM documents")
         admin.execute("DELETE FROM tenants WHERE name <> ALL(%s)", (list(SEEDED_TENANTS),))
     yield
