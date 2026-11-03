@@ -14,7 +14,7 @@ import pytest
 from app.audit.log import verify
 from app.audit.recorder import AuditRecorder
 from app.db import connect
-from app.domain import AnswerResult, Chunk, Citation, GuardVerdict, ScoredChunk, User
+from app.domain import AnswerResult, Chunk, Citation, GuardVerdict, Progress, ScoredChunk, User
 from tests.conftest import PgUrls
 
 pytestmark = pytest.mark.db
@@ -111,6 +111,33 @@ def test_a_failure_is_recorded_as_an_error(pg: PgUrls) -> None:
         pg, "SELECT decision, details FROM audit_events WHERE stage = 'finish'"
     )
     assert (decision, details) == ("ERROR", {"error": "GuardUnavailable"})
+
+
+def test_a_failure_keeps_the_decisions_made_before_it(pg: PgUrls) -> None:
+    # Tester v0.6.0 T-2: a rate-limited request used to keep only START and ERROR.
+    alice, request_id, done = _alice(pg), str(uuid.uuid4()), _result()
+    timings = {"retrieve": 120.5, "generate": 30000.0}
+    progress = Progress(
+        failed_step="generate",
+        verdicts=done.verdicts[:2],
+        retrieved=done.retrieved,
+        timings=timings,
+    )
+    with connect(pg.app, autocommit=True) as conn:
+        recorder = AuditRecorder(conn, KEY)
+        recorder.start(request_id, alice, "How much leave?")
+        recorder.fail(request_id, alice, "RateLimitError", latency_ms=30100, progress=progress)
+
+    events = _rows(pg, "SELECT stage, decision, details FROM audit_events ORDER BY seq")
+    assert [(stage, decision) for stage, decision, _ in events] == [
+        ("request", "START"), ("input_guard", "ALLOW"), ("retrieve", "OK"),
+        ("context_guard", "MASK"), ("finish", "ERROR"),
+    ]  # fmt: skip
+    assert events[-1][2] == {
+        "error": "RateLimitError", "failed_step": "generate", "timings_ms": timings,
+    }  # fmt: skip
+    assert _rows(pg, "SELECT chunk_ref FROM request_sources") == [("expense-payees:1:0",)]
+    assert verify(psycopg.connect(pg.admin), alice.tenant_id).ok
 
 
 def test_nothing_raw_is_stored_anywhere(pg: PgUrls) -> None:

@@ -41,6 +41,16 @@ def test_an_injected_chunk_is_dropped_and_the_rest_kept() -> None:
     assert [(v.decision, v.reason) for v in verdicts] == [("DROP", "injection in notice:1:0")]
 
 
+def test_a_guard_that_changed_nothing_still_says_it_ran() -> None:
+    # Tester v0.6.0 T-5: "ran and allowed" must be distinguishable from "did not run".
+    chunks = [_hit("leave", "Leave is 25 days."), _hit("hotel", "Hotels up to 190 pounds.")]
+
+    kept, verdicts = ContextGuard(WordClassifier()).check(chunks, EMPLOYEE)
+
+    assert len(kept) == 2
+    assert [(v.decision, v.reason) for v in verdicts] == [("PASS", "2 chunks checked")]
+
+
 def test_personal_data_is_masked_for_users_without_pii_read() -> None:
     kept, verdicts = ContextGuard(WordClassifier()).check([_hit("payees", PAYEES)], EMPLOYEE)
 
@@ -50,7 +60,8 @@ def test_personal_data_is_masked_for_users_without_pii_read() -> None:
 
 def test_users_with_pii_read_see_the_original() -> None:
     kept, verdicts = ContextGuard(WordClassifier()).check([_hit("payees", PAYEES)], WITH_PII_READ)
-    assert (kept[0].chunk.text, verdicts) == (PAYEES, [])
+    assert kept[0].chunk.text == PAYEES
+    assert [v.decision for v in verdicts] == ["PASS"]  # ran, changed nothing (tester T-5)
 
 
 def test_no_scope_means_masked() -> None:

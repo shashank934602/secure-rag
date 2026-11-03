@@ -3,7 +3,8 @@
     start()   when a question arrives: the request record (status 'started') + a START event
     finish()  when it ends, in ONE transaction: status, redacted answer, sources, one event per
               decision, and the per-step timings
-    fail()    when it errors: status 'error' + an ERROR event
+    fail()    when it errors: status 'error', the decisions made before the failure, the failed
+              step, and an ERROR event (tester v0.6.0 T-2)
 
 Nothing raw is stored (Invariant 5): the question is kept as an HMAC (a keyed hash, so the same
 question can be found again without storing it) and as redacted text; every stored text passes
@@ -18,7 +19,7 @@ from psycopg_pool import ConnectionPool
 
 from app.audit.log import append_in_transaction
 from app.db import borrow, tenant_scope
-from app.domain import AnswerResult, User
+from app.domain import AnswerResult, GuardVerdict, Progress, ScoredChunk, User
 from app.guards.output import redact
 
 # Guard names in verdicts → the graph stage they come from (the audit's `stage` column).
@@ -56,18 +57,9 @@ class AuditRecorder:
         model: str,
         judge_prompt_version: str | None = None,
     ) -> None:
-        # In flow order: the input guard, retrieval, then every later decision, then the outcome.
-        decisions = [
-            _event(request_id, user, _STAGES.get(v.guard, v.guard), v.decision, score=v.score,
-                   details={"reason": redact(v.reason)} if v.reason else {})
-            for v in result.verdicts
-        ]  # fmt: skip
-        first = [e for e in decisions if e["stage"] == "input_guard"]
-        later = [e for e in decisions if e["stage"] != "input_guard"]
-        retrieve = [_retrieve_event(request_id, user, result)] if result.retrieved else []
         outcome = _event(request_id, user, "finish", result.status.upper(),
                          details={"timings_ms": result.timings})  # fmt: skip
-        events = [*first, *retrieve, *later, outcome]
+        events = [*_decisions(request_id, user, result.verdicts, result.retrieved), outcome]
 
         with borrow(self.db) as conn, tenant_scope(conn, user.tenant_id):  # all or nothing
             conn.execute(
@@ -78,26 +70,33 @@ class AuditRecorder:
                 (result.status, redact(result.answer), latency_ms, model, result.prompt_version,
                  judge_prompt_version, request_id),
             )  # fmt: skip
-            with conn.cursor() as cur:
-                cur.executemany(
-                    """INSERT INTO request_sources (request_id, tenant_id, rank, chunk_ref, score)
-                       VALUES (%s, %s, %s, %s, %s)""",
-                    [(request_id, user.tenant_id, rank, hit.chunk.id, hit.score)
-                     for rank, hit in enumerate(result.retrieved, start=1)],
-                )  # fmt: skip
+            _insert_sources(conn, request_id, user, result.retrieved)
             append_in_transaction(conn, user.tenant_id, events)
 
-    def fail(self, request_id: str, user: User, error: str, *, latency_ms: int) -> None:
+    def fail(
+        self,
+        request_id: str,
+        user: User,
+        error: str,
+        *,
+        latency_ms: int,
+        progress: Progress | None = None,
+    ) -> None:
+        details: dict = {"error": error}
+        verdicts, retrieved = [], []
+        if progress is not None:  # what had happened before the failure (tester T-2)
+            details |= {"failed_step": progress.failed_step, "timings_ms": progress.timings}
+            verdicts, retrieved = progress.verdicts, progress.retrieved
+        outcome = _event(request_id, user, "finish", "ERROR", details=details)
+        events = [*_decisions(request_id, user, verdicts, retrieved), outcome]
         with borrow(self.db) as conn, tenant_scope(conn, user.tenant_id):
             conn.execute(
                 "UPDATE requests SET status = 'error', latency_ms = %s, finished_at = now() "
                 "WHERE id = %s",
                 (latency_ms, request_id),
             )
-            append_in_transaction(
-                conn, user.tenant_id,
-                [_event(request_id, user, "finish", "ERROR", details={"error": error})],
-            )  # fmt: skip
+            _insert_sources(conn, request_id, user, retrieved)
+            append_in_transaction(conn, user.tenant_id, events)
 
     def acl_changed(self, conn: psycopg.Connection, user: User, change: dict) -> None:
         """Inside the ACL change's own transaction (atomic with the change)."""
@@ -135,6 +134,28 @@ def _event(request_id, user: User, stage: str, decision: str, score=None, detail
             "score": score, "details": details or {}}  # fmt: skip
 
 
-def _retrieve_event(request_id, user: User, result: AnswerResult) -> dict:
-    refs = [hit.chunk.id for hit in result.retrieved]
-    return _event(request_id, user, "retrieve", "OK", details={"chunks": refs})
+def _decisions(
+    request_id, user: User, verdicts: list[GuardVerdict], retrieved: list[ScoredChunk]
+) -> list[dict]:
+    """In flow order: the input guard, retrieval, then every later decision."""
+    decisions = [
+        _event(request_id, user, _STAGES.get(v.guard, v.guard), v.decision, score=v.score,
+               details={"reason": redact(v.reason)} if v.reason else {})
+        for v in verdicts
+    ]  # fmt: skip
+    first = [e for e in decisions if e["stage"] == "input_guard"]
+    later = [e for e in decisions if e["stage"] != "input_guard"]
+    refs = [hit.chunk.id for hit in retrieved]
+    if refs:
+        first.append(_event(request_id, user, "retrieve", "OK", details={"chunks": refs}))
+    return [*first, *later]
+
+
+def _insert_sources(conn, request_id, user: User, retrieved: list[ScoredChunk]) -> None:
+    with conn.cursor() as cur:
+        cur.executemany(
+            """INSERT INTO request_sources (request_id, tenant_id, rank, chunk_ref, score)
+               VALUES (%s, %s, %s, %s, %s)""",
+            [(request_id, user.tenant_id, rank, hit.chunk.id, hit.score)
+             for rank, hit in enumerate(retrieved, start=1)],
+        )  # fmt: skip

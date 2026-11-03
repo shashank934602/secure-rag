@@ -153,3 +153,28 @@ def test_a_malformed_request_id_is_422(pg: PgUrls, app_client) -> None:
     client, _ = app_client
     audrey = _user(pg, "audrey@aldermoor.example.com")
     assert client.get("/v1/audit/requests/not-a-uuid", headers=_bearer(audrey)).status_code == 422
+
+
+def test_refused_and_missing_reads_are_audited_too(pg: PgUrls, app_client) -> None:
+    # Tester v0.6.0 T-4: who tried to look is evidence, not only who looked.
+    client, conn = app_client
+    alice, audrey = (
+        _user(pg, "alice@aldermoor.example.com"),
+        _user(pg, "audrey@aldermoor.example.com"),
+    )
+    request_id, unknown = _record(conn, alice), str(uuid.uuid4())
+
+    assert client.get(f"/v1/audit/requests/{request_id}", headers=_bearer(alice)).status_code == 403
+    assert client.get("/v1/audit/verify", headers=_bearer(alice)).status_code == 403
+    assert client.get(f"/v1/audit/requests/{unknown}", headers=_bearer(audrey)).status_code == 404
+
+    with psycopg.connect(pg.admin) as admin:
+        reads = admin.execute(
+            "SELECT actor_id, decision, details FROM audit_events WHERE stage = 'audit_read' "
+            "ORDER BY seq"
+        ).fetchall()
+    assert [(str(actor), decision, details) for actor, decision, details in reads] == [
+        (alice.id, "BLOCK", {"request_id": request_id, "status": 403}),
+        (alice.id, "BLOCK", {"verify": None, "status": 403}),
+        (audrey.id, "BLOCK", {"request_id": unknown, "status": 404}),
+    ]

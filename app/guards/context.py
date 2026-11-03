@@ -42,4 +42,7 @@ class ContextGuard:
                     reason = f"{hit.chunk.id}: {', '.join(kinds)}"
                     verdicts.append(GuardVerdict(guard="context", decision="MASK", reason=reason))
             kept.append(hit)
+        if chunks and not verdicts:  # ran and changed nothing: say so (tester v0.6.0 T-5)
+            reason = f"{len(chunks)} chunks checked"
+            verdicts.append(GuardVerdict(guard="context", decision="PASS", reason=reason))
         return kept, verdicts

@@ -29,6 +29,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, Field, StringConstraints
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.answering.answer import Answerer, build_db_answerer
 from app.audit.queries import AuditAccessError, get_request, list_requests, verify_tenant
@@ -48,6 +49,40 @@ request_log = logging.getLogger("app.requests")
 UNAVAILABLE = "The assistant is temporarily unavailable. Try again."
 RETRY_AFTER = {"Retry-After": "30"}  # a 503 is temporary (outage, provider rate limit)
 MAX_BODY_BYTES = 16_384  # a 1,000-character question fits many times over (tester T-3)
+TOO_LARGE = "Request body too large"
+
+
+class BodyLimit:
+    """Refuse request bodies over `max_bytes` with 413, however they are sent.
+
+    A declared Content-Length is checked before anything is read. A chunked upload declares no
+    length, so its bytes are counted as they arrive and reading stops at the limit (tester
+    v0.6.0 T-1: a 3 MB chunked body used to be read whole, then rejected as 422).
+    """
+
+    def __init__(self, app: ASGIApp, max_bytes: int = MAX_BODY_BYTES) -> None:
+        self.app, self.max_bytes = app, max_bytes
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        length = dict(scope["headers"]).get(b"content-length", b"")
+        if length.isdigit() and int(length) > self.max_bytes:
+            await JSONResponse(status_code=413, content={"detail": TOO_LARGE})(scope, receive, send)
+            return
+        received = 0
+
+        async def counted() -> Message:
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_bytes:  # FastAPI passes this through as a 413
+                    raise HTTPException(status_code=413, detail=TOO_LARGE)
+            return message
+
+        await self.app(scope, counted, send)
 
 
 class ErrorOut(BaseModel):
@@ -154,13 +189,7 @@ def create_app(
 
     app = FastAPI(title="Secure RAG Assistant", version="0.6.0", lifespan=lifespan)
 
-    @app.middleware("http")
-    async def limit_body_size(request: Request, call_next):
-        # Refuse big bodies from their declared length, before anything reads them (tester T-3).
-        length = request.headers.get("content-length")
-        if length and length.isdigit() and int(length) > MAX_BODY_BYTES:
-            return JSONResponse(status_code=413, content={"detail": "Request body too large"})
-        return await call_next(request)
+    app.add_middleware(BodyLimit)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, error: RequestValidationError) -> JSONResponse:
@@ -176,10 +205,12 @@ def create_app(
     ) -> AskResponse | JSONResponse:
         request_id, started = str(uuid.uuid4()), time.perf_counter()
         answerer, audit = request.app.state.answerer, request.app.state.recorder
+        line = functools.partial(_log_request, request_id, user, started)
         try:  # recorded before anything runs, so even a crash leaves a trace (spec 06 D5)
             audit.start(request_id, user, body.question)
         except Exception as error:
             log.error("audit start failed request_id=%s error=%s", request_id, type(error).__name__)
+            line("error", error="audit_start")
             return _unavailable()  # no audit, no answer (D6)
         try:
             result = answerer.answer(body.question, scope=user.scope)
@@ -187,11 +218,15 @@ def create_app(
             # Log the failure type only: never the question (Invariant 5) or the error text,
             # which can contain keys or internal details. The caller gets a generic message.
             log.error("ask failed request_id=%s error=%s", request_id, type(error).__name__)
+            progress = getattr(error, "progress", None)  # what ran before it failed (T-2)
             try:
-                audit.fail(request_id, user, type(error).__name__, latency_ms=_ms(started))
+                audit.fail(request_id, user, type(error).__name__, latency_ms=_ms(started),
+                           progress=progress)  # fmt: skip
             except Exception as audit_error:
                 log.error("audit fail failed request_id=%s error=%s", request_id,
                           type(audit_error).__name__)  # fmt: skip
+            line("error", progress.timings if progress else {}, error=type(error).__name__,
+                 failed_step=progress.failed_step if progress else None)  # fmt: skip
             return _unavailable()
         judge = JUDGE_PROMPT_VERSION if answerer.grounding_judge is not None else None
         try:
@@ -201,19 +236,9 @@ def create_app(
             log.error(
                 "audit finish failed request_id=%s error=%s", request_id, type(error).__name__
             )
+            line("error", result.timings, error="audit_finish")
             return _unavailable()  # an answer that can't be explained isn't given (D6)
-        request_log.info(
-            json.dumps(
-                {
-                    "request_id": request_id,
-                    "user_id": user.id,
-                    "tenant_id": user.tenant_id,
-                    "status": result.status,
-                    "latency_ms": _ms(started),
-                    "timings_ms": result.timings,
-                }
-            )
-        )
+        line(result.status, result.timings)
         return _response(result, request_id)
 
     @app.patch("/v1/documents/{doc_id}/acl", responses=_error_docs(401, 403, 404, 413, 503))
@@ -329,6 +354,22 @@ def _unauthorized() -> HTTPException:
 
 def _ms(started: float) -> int:
     return round((time.perf_counter() - started) * 1000)
+
+
+def _log_request(
+    request_id: str,
+    user: User,
+    started: float,
+    status: str,
+    timings: dict[str, float] | None = None,
+    **extra: str | None,
+) -> None:
+    """One JSON line per request, failures included (tester v0.6.0 T-2): who, outcome, time per
+    step, and for a failure its error type. Never the question or answer (Invariant 5)."""
+    line = {"request_id": request_id, "user_id": user.id, "tenant_id": user.tenant_id,
+            "status": status, "latency_ms": _ms(started), "timings_ms": timings or {}}  # fmt: skip
+    line |= {key: value for key, value in extra.items() if value is not None}
+    request_log.info(json.dumps(line))
 
 
 def _response(result: AnswerResult, request_id: str) -> AskResponse:

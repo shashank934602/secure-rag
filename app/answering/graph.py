@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Literal, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.domain import AccessScope, Citation, GuardVerdict, ScoredChunk
+from app.domain import AccessScope, Citation, GuardVerdict, Progress, ScoredChunk
 
 if TYPE_CHECKING:
     from app.answering.answer import Answerer
@@ -93,12 +93,27 @@ def _timed(name: str, step: Callable[[AnswerState], AnswerState]) -> Callable:
 
     def run(state: AnswerState) -> AnswerState:
         started = time.perf_counter()
-        update = step(state) or {}
-        timings = dict(state.get("timings") or {})
-        timings[name] = round(timings.get(name, 0.0) + (time.perf_counter() - started) * 1000, 1)
-        return {**update, "timings": timings}
+        try:
+            update = step(state) or {}
+        except Exception as error:
+            # Keep what was done before the failure, for the audit and the log (tester T-2).
+            if not hasattr(error, "progress"):
+                error.progress = Progress(
+                    failed_step=name,
+                    verdicts=state.get("verdicts") or [],
+                    retrieved=state.get("retrieved") or [],
+                    timings=_add_time(state, name, started),
+                )
+            raise
+        return {**update, "timings": _add_time(state, name, started)}
 
     return run
+
+
+def _add_time(state: AnswerState, name: str, started: float) -> dict[str, float]:
+    timings = dict(state.get("timings") or {})
+    timings[name] = round(timings.get(name, 0.0) + (time.perf_counter() - started) * 1000, 1)
+    return timings
 
 
 def _after_input_guard(state: AnswerState) -> Literal["refused", "retrieve"]:

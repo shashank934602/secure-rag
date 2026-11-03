@@ -336,3 +336,80 @@ def test_each_request_writes_one_json_log_line_without_the_question(caplog) -> N
     )
     assert isinstance(entry["latency_ms"], int) and "retrieve" in entry["timings_ms"]
     assert "leave" not in lines[0] and "GB82" not in lines[0]  # Invariant 5
+
+
+# --- tester v0.6.0 findings ------------------------------------------------------------------
+
+
+def _kilobytes(count: int):
+    """A body sent in 1 KB pieces with no Content-Length (Transfer-Encoding: chunked)."""
+    for _ in range(count):
+        yield b"x" * 1024
+
+
+def test_a_chunked_body_over_the_limit_is_refused_too() -> None:
+    # T-1: a chunked upload declares no length, so the old check never fired (3 MB → 422).
+    with _client(NO_ANSWER) as client:
+        ask = client.post(
+            "/v1/ask", content=_kilobytes(64), headers={"Content-Type": "application/json"}
+        )
+        acl = client.patch("/v1/documents/leave-policy/acl", content=_kilobytes(64),
+                           headers={"Content-Type": "application/json"})  # fmt: skip
+    assert (ask.status_code, acl.status_code) == (413, 413)
+    assert ask.json() == {"detail": "Request body too large"}
+
+
+def test_a_small_chunked_body_is_still_answered() -> None:
+    body = b'{"question": "How much leave do I get?"}'
+    with _client(NO_ANSWER) as client:
+        response = client.post("/v1/ask", content=iter([body[:10], body[10:]]),
+                               headers={"Content-Type": "application/json"})  # fmt: skip
+    assert response.status_code == 200
+
+
+def test_a_failed_request_keeps_its_decisions_and_writes_a_log_line(caplog) -> None:
+    # T-2: a 503 used to record only START and ERROR, and wrote no JSON line.
+    import json
+    import logging
+
+    from app.guards.injection import InputGuard
+    from tests.test_input_guard import FakeClassifier
+
+    class BrokenModel(ScriptedChatModel):
+        def _generate(self, *args, **kwargs):
+            raise RuntimeError("rate limited; api_key=sk-secret-123")
+
+    class SpyRecorder(NullRecorder):
+        def __init__(self) -> None:
+            self.failures = []
+
+        def fail(self, request_id, user, error, *, latency_ms, progress=None) -> None:
+            self.failures.append((error, progress))
+
+    answerer = Answerer(
+        index=ChunkIndex(CHUNKS, KeywordEmbeddings(VOCAB)),
+        chat_model=BrokenModel(responses=[]),
+        top_k=2,
+        input_guard=InputGuard(FakeClassifier(score=0.01)),
+    )
+    spy = SpyRecorder()
+    app = create_app(build=lambda: answerer, health_check=lambda: None, recorder=lambda: spy,
+                     authenticator=lambda: _authenticate)  # fmt: skip
+    with caplog.at_level(logging.INFO, logger="app.requests"), TestClient(app) as client:
+        response = client.post("/v1/ask", json={"question": "How much leave?"},
+                               headers={"Authorization": "Bearer good-token"})  # fmt: skip
+
+    assert response.status_code == 503
+    [(error, progress)] = spy.failures
+    assert (error, progress.failed_step) == ("RuntimeError", "generate")
+    assert [(v.guard, v.decision) for v in progress.verdicts] == [("input", "ALLOW")]
+    assert progress.retrieved[0].chunk.id == "leave-policy:1:0"
+    assert {"input_guard", "retrieve", "generate"} <= set(progress.timings)
+
+    [line] = [r.getMessage() for r in caplog.records if r.name == "app.requests"]
+    entry = json.loads(line)
+    assert (entry["status"], entry["error"], entry["failed_step"]) == (
+        "error", "RuntimeError", "generate",
+    )  # fmt: skip
+    assert "generate" in entry["timings_ms"]
+    assert "leave" not in line and "sk-secret" not in line  # Invariant 5, no error text

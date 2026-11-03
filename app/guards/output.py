@@ -49,7 +49,8 @@ def check_output(answer: str, scope: AccessScope | None) -> tuple[str, GuardVerd
     text = re.sub(r"[ \t]{2,}", " ", text).strip()
     text = re.sub(r"\s+([.,;:!?])", r"\1", text)
     if not changes:
-        return answer, GuardVerdict(guard="output", decision="PASS")
+        reason = "nothing to remove"
+        return answer, GuardVerdict(guard="output", decision="PASS", reason=reason)
     return text, GuardVerdict(guard="output", decision="MASK", reason=", ".join(changes))
 
 

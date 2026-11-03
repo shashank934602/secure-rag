@@ -51,7 +51,7 @@ class GroundingJudge:
             raise GuardUnavailable("grounding judge: unreadable verdict")
         grounded, unsupported = verdict
         if grounded:
-            return GuardVerdict(guard="grounding", decision="PASS")
+            return GuardVerdict(guard="grounding", decision="PASS", reason="every claim supported")
         return GuardVerdict(guard="grounding", decision="FAIL", reason="; ".join(unsupported))
 
 

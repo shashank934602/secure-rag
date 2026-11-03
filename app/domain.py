@@ -72,6 +72,16 @@ class AnswerResult(BaseModel):
     timings: dict[str, float] = {}  # milliseconds per graph step (Phase 6, spec 06 D8)
 
 
+class Progress(BaseModel):
+    """How far a request got before a step failed (tester v0.6.0 T-2): the decisions already
+    made are evidence too, so the audit records them with the error."""
+
+    failed_step: str
+    verdicts: list[GuardVerdict] = []
+    retrieved: list[ScoredChunk] = []
+    timings: dict[str, float] = {}  # including the time the failed step ran before it failed
+
+
 class AccessScope(BaseModel):
     """Who a search is for: one tenant and the asking user's roles (GLOSSARY: Access scope)."""
 
