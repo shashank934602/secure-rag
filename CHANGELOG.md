@@ -13,6 +13,10 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- Auditor endpoints (`auditor` permission): `GET /v1/audit/requests/{id}` (the request, its sources, and every decision in order), `GET /v1/audit/requests` (search by status, user, time), `GET /v1/audit/verify` (recompute the hash chain); tenant-scoped; every read is itself audited (ISS-052).
+
 ### Changed
 
 - `/v1/ask` and `PATCH …/acl` now write the audit trail: a request record at the start (HMAC + redacted text, never raw), then the outcome, sources, every guard decision, and per-step timings in one transaction; access changes are audited in their own transaction; if the audit can't be written, the request is refused (503) (ISS-051).

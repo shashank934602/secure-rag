@@ -638,4 +638,10 @@ loaded this log automatically, so the rule survived the new session.
 - **The payoff:** the log explained a mysterious "I don't know". The judge had rejected the answer twice because two of our documents *disagree* (expense policy: "paid with the next monthly salary"; payee file: "bank transfer within 5 working days"). A real conflicting-documents case (ISS-019) that only the audit made visible.
 - **Timings separated at last:** generating the answer 3.0 s, search 1.3 s, input guard 0.18 s.
 
-**Next session starts with:** S3, auditor endpoints and `/verify`.
+**Update — Phase 6 S3: the auditor's view (ISS-052):**
+- Three read-only endpoints for the `auditor` permission: open a request (its sources and every decision in order), search requests, and `/verify` the chain.
+- Real investigation: Audrey searched for "no_answer", opened Alice's request, and saw why: data masked, then the grounding judge failed the answer twice. **"Show me why it said that"** now has an answer.
+- **Reading the audit is audited** (who looked at what), in the same transaction as the read. `/verify` counted 17 events, including Audrey's own reads.
+- Row-level security again: Aldermoor's auditor gets 404 for a Northgate request. Alice (no `auditor`) gets 403.
+
+**Next session starts with:** S4, structured logs, the tester's check of Phase 6, then `v0.6.0`.

@@ -11,6 +11,8 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 6 S3 — the auditor's view** (2026-11-03, ISS-052)
+  - `GET /v1/audit/requests/{id}`, `GET /v1/audit/requests`, `GET /v1/audit/verify` for users with `auditor` (audrey); tenant-scoped; reads are audited. 220 offline, 101 db tests. Phase 6 "done when" met: any request can be opened with every decision; tampering is detected.
 - **Phase 6 S2 — every request recorded** (2026-11-03, ISS-051)
   - `/v1/ask`: request row at the start (HMAC + redacted question), then status, redacted answer, sources, every guard decision, and per-step timings in one transaction; fail closed. ACL changes audited atomically. `AUDIT_HMAC_KEY` in `.env`. 220 offline, 94 db tests.
   - Real run: the log explained a "No-Answer" (the judge rejected an answer twice because two documents disagree on how reimbursements are paid, ISS-019); timings generate 3.0 s / retrieve 1.3 s / input guard 0.18 s.
