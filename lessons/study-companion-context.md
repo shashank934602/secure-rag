@@ -43,7 +43,7 @@ tamper-evident audit trail, and an evaluation gate. The data is a **fake company
 | 3 | Better retrieval (keyword + vector search, reranking), LangGraph flow | ✅ released `v0.3.0` (2026-10-31) |
 | 4 | Login, roles, per-company isolation (row-level security) | ✅ released `v0.4.0` (2026-11-02) |
 | 5 | Guardrails: prompt injection, PII, grounding judge | ✅ released `v0.5.0` (2026-11-02) |
-| 6 | Audit trail with a hash chain, observability | next |
+| 6 | Audit trail with a hash chain, observability | built; tester checking before `v0.6.0` |
 | 7 | Full evaluation + CI gate | |
 | 8 | Ship it | then production (see `docs/production-plan.md`) |
 
@@ -104,6 +104,7 @@ Work through these; each points to the notes that answer it.
 8. **Test set** (S5): what is a near-miss and why include it?
 9. **Metrics** (S6): right page 5th → recall@5 and reciprocal rank? Why report false refusals with No-Answer accuracy? Why p95, not the average?
 10. **Why not a dedicated vector DB?** (`lessons/02-…`, S1 box; ADR-0001)
+15. **Phase 6** (`lessons/06-audit-trail.md`): hash chains, HMAC vs hash, fail closed on audit, audited reads, per-step timings.
 14. **Phase 5** (`lessons/05-guardrails.md`): signals vs structural guards, confidence intervals, masking before the model, exfiltration by image, the judge trade-off.
 13. **Phase 4** (`lessons/04-access-control.md`): RLS and the no-WHERE test, SET LOCAL, why tokens hold no roles, 404 vs 403, positive controls.
 12. **Phase 3** (`lessons/03-better-retrieval.md`): RRF, cross-encoders, why no threshold, the graph, MRR vs recall.
