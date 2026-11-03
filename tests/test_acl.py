@@ -10,6 +10,7 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
+from app.audit.recorder import AuditRecorder
 from app.auth import authenticate, issue_token
 from app.config import Settings
 from app.db import connect
@@ -136,6 +137,7 @@ def _client(pg: PgUrls, conn: psycopg.Connection) -> TestClient:
         health_check=lambda: None,
         authenticator=lambda: lambda token: authenticate(token, secret=SECRET, db=conn),
         database=lambda: conn,
+        recorder=lambda: AuditRecorder(conn, "test-audit-key"),
     )
     return TestClient(app)
 
@@ -166,3 +168,37 @@ def test_patch_acl_endpoint(pg, conn) -> None:
     assert not_found.status_code == 404
     assert bad_role.status_code == 422 and empty.status_code == 422
     assert anonymous.status_code == 401
+
+
+# --- access changes are audited atomically (Phase 6, ISS-051) ---------------------------------
+
+
+def test_an_acl_change_and_a_refused_attempt_are_both_audited(pg, conn) -> None:
+    harriet, alice = (_bearer(pg, "harriet@aldermoor.example.com"),
+                      _bearer(pg, "alice@aldermoor.example.com"))  # fmt: skip
+    with _client(pg, conn) as client:
+        client.patch(
+            "/v1/documents/leave-policy/acl", json={"allowed_roles": ["hr"]}, headers=harriet
+        )
+        client.patch(
+            "/v1/documents/leave-policy/acl", json={"allowed_roles": ["hr"]}, headers=alice
+        )
+
+    with psycopg.connect(pg.admin) as admin:
+        rows = admin.execute(
+            "SELECT decision, details FROM audit_events WHERE stage = 'acl_change' ORDER BY seq"
+        ).fetchall()
+    assert rows[0] == ("ALLOW", {"doc_id": "leave-policy", "from": ["employee"], "to": ["hr"],
+                                  "chunks_updated": rows[0][1]["chunks_updated"]})  # fmt: skip
+    assert rows[1][0] == "BLOCK" and rows[1][1]["status"] == 403
+
+
+def test_if_the_audit_fails_the_acl_change_is_rolled_back(pg, conn) -> None:
+    def broken_audit(audit_conn, change) -> None:
+        raise ConnectionError("audit unavailable")
+
+    with pytest.raises(ConnectionError):
+        change_acl(conn, _user(pg, "harriet@aldermoor.example.com"), "leave-policy", ["hr"],
+                   audit=broken_audit)  # fmt: skip
+
+    assert _roles(conn, "leave-policy") == (["employee"], {("employee",)})  # unchanged

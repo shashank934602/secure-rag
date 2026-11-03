@@ -5,6 +5,7 @@ import uuid
 from fastapi.testclient import TestClient
 
 from app.answering.answer import NO_ANSWER, Answerer
+from app.audit.recorder import NullRecorder
 from app.auth import AuthError
 from app.domain import AccessScope, Chunk, User
 from app.main import create_app
@@ -47,7 +48,12 @@ def _authenticate(token: str) -> User:
 
 def _test_client(build, health_check) -> TestClient:
     """A client that sends a valid token by default; tests about auth override the header."""
-    app = create_app(build=build, health_check=health_check, authenticator=lambda: _authenticate)
+    app = create_app(
+        build=build,
+        health_check=health_check,
+        recorder=NullRecorder,
+        authenticator=lambda: _authenticate,
+    )
     return TestClient(app, headers={"Authorization": "Bearer good-token"})
 
 
@@ -217,7 +223,10 @@ def test_an_auth_outage_is_503_not_401() -> None:
         raise ConnectionError("database down")
 
     app = create_app(
-        build=lambda: _answerer(), health_check=lambda: None, authenticator=lambda: down
+        recorder=NullRecorder,
+        build=lambda: _answerer(),
+        health_check=lambda: None,
+        authenticator=lambda: down,
     )
     with TestClient(app, headers={"Authorization": "Bearer good-token"}) as client:
         response = client.post("/v1/ask", json={"question": "leave?"})

@@ -17,6 +17,8 @@ Each node reads the shared state and returns only the keys it changes. Later pha
 steps (input guard, context guard, grounding judge, audit) as nodes and edges here.
 """
 
+import time
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -40,19 +42,20 @@ class AnswerState(TypedDict, total=False):
     grounded: bool  # the latest grounding verdict
     retry_note: str  # why the last reply was rejected, shown to the model on its retry
     verdicts: list[GuardVerdict]  # every guard decision so far, in order
+    timings: dict[str, float]  # milliseconds spent in each step (summed over a retry)
     status: Literal["answered", "no_answer", "refused"]  # unset while still deciding
 
 
 def build_graph(answerer: "Answerer") -> CompiledStateGraph:
     graph = StateGraph(AnswerState)
-    graph.add_node("input_guard", answerer.input_guard_step)
+    graph.add_node("input_guard", _timed("input_guard", answerer.input_guard_step))
     graph.add_node("refused", lambda state: {"status": "refused", "citations": []})
-    graph.add_node("retrieve", answerer.retrieve_step)
-    graph.add_node("context_guard", answerer.context_guard_step)
-    graph.add_node("generate", answerer.generate_step)
-    graph.add_node("output_checks", answerer.output_step)
-    graph.add_node("check_citations", answerer.check_step)
-    graph.add_node("grounding_judge", answerer.grounding_step)
+    graph.add_node("retrieve", _timed("retrieve", answerer.retrieve_step))
+    graph.add_node("context_guard", _timed("context_guard", answerer.context_guard_step))
+    graph.add_node("generate", _timed("generate", answerer.generate_step))
+    graph.add_node("output_checks", _timed("output_checks", answerer.output_step))
+    graph.add_node("check_citations", _timed("check_citations", answerer.check_step))
+    graph.add_node("grounding_judge", _timed("grounding_judge", answerer.grounding_step))
     graph.add_node("answered", lambda state: {"status": "answered"})
     graph.add_node("no_answer", lambda state: {"status": "no_answer", "citations": []})
 
@@ -82,6 +85,20 @@ def build_graph(answerer: "Answerer") -> CompiledStateGraph:
     graph.add_edge("answered", END)
     graph.add_edge("no_answer", END)
     return graph.compile()
+
+
+def _timed(name: str, step: Callable[[AnswerState], AnswerState]) -> Callable:
+    """Wrap a step so its duration is added to state["timings"] (spec 06 D8). This separates our
+    own time from the model providers' (ISS-029)."""
+
+    def run(state: AnswerState) -> AnswerState:
+        started = time.perf_counter()
+        update = step(state) or {}
+        timings = dict(state.get("timings") or {})
+        timings[name] = round(timings.get(name, 0.0) + (time.perf_counter() - started) * 1000, 1)
+        return {**update, "timings": timings}
+
+    return run
 
 
 def _after_input_guard(state: AnswerState) -> Literal["refused", "retrieve"]:

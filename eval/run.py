@@ -23,6 +23,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.answering.answer import PROMPT_VERSION, Answerer, build_db_answerer
+from app.audit.recorder import NullRecorder
 from app.config import ROOT, Settings, get_settings
 from app.domain import User
 from app.main import create_app
@@ -57,7 +58,10 @@ def evaluate(
         permissions=[],
     )
     app = create_app(
-        build=lambda: answerer, health_check=lambda: None, authenticator=lambda: lambda _: user
+        recorder=NullRecorder,  # quality runs aren't user requests
+        build=lambda: answerer,
+        health_check=lambda: None,
+        authenticator=lambda: lambda _: user,
     )
     results = []
     with TestClient(app, headers={"Authorization": "Bearer eval"}) as client:

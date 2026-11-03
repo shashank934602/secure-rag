@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     jwt_secret: str = ""
     token_ttl_s: int = 3600
 
+    # Audit trail (spec 06 D4): key for the HMAC of each question; the raw text is never stored.
+    audit_hmac_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

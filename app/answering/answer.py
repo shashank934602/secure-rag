@@ -64,20 +64,23 @@ class Answerer:
         self.input_guard = input_guard  # None only in unit tests; the app always has one
         self.context_guard = context_guard
         self.grounding_judge = grounding_judge
+        self.model_label = type(chat_model).__name__  # build_answerer sets "provider:model"
         self.graph = build_graph(self)
         template = Template((_PROMPTS / f"{PROMPT_VERSION}.md").read_text(encoding="utf-8"))
         self._system_prompt = template.substitute(no_answer=NO_ANSWER)
 
     def answer(self, question: str, scope: AccessScope | None = None) -> AnswerResult:
         """Raises GuardUnavailable if a guard can't run: the caller must refuse (fail closed)."""
-        final = self.graph.invoke({"question": question, "scope": scope, "verdicts": []})
-        verdicts = final["verdicts"]
+        final = self.graph.invoke(
+            {"question": question, "scope": scope, "verdicts": [], "timings": {}}
+        )
+        verdicts, timings = final["verdicts"], final["timings"]
         if final["status"] == "refused":
-            return self._result("refused", REFUSAL, [], [], verdicts)
+            return self._result("refused", REFUSAL, [], [], verdicts, timings)
         if final["status"] == "no_answer":
-            return self._result("no_answer", NO_ANSWER, [], final["retrieved"], verdicts)
+            return self._result("no_answer", NO_ANSWER, [], final["retrieved"], verdicts, timings)
         answer, citations = final["replies"][-1], final["citations"]
-        return self._result("answered", answer, citations, final["retrieved"], verdicts)
+        return self._result("answered", answer, citations, final["retrieved"], verdicts, timings)
 
     def retrieve(self, question: str, scope: AccessScope | None = None) -> list[ScoredChunk]:
         """The top_k chunks the LLM will see: searched directly, or reranked from candidates."""
@@ -153,6 +156,7 @@ class Answerer:
         citations: list[Citation],
         retrieved: list[ScoredChunk],
         verdicts: list[GuardVerdict],
+        timings: dict[str, float],
     ) -> AnswerResult:
         return AnswerResult(
             status=status,
@@ -161,6 +165,7 @@ class Answerer:
             retrieved=retrieved,
             prompt_version=PROMPT_VERSION,
             verdicts=verdicts,
+            timings=timings,
         )
 
 
@@ -216,7 +221,7 @@ def build_answerer(
             max_retries=1,
         )
         grounding_judge = GroundingJudge(judge_model)
-    return Answerer(
+    answerer = Answerer(
         index=retriever,
         chat_model=model,
         top_k=settings.top_k,
@@ -227,6 +232,8 @@ def build_answerer(
         context_guard=context_guard,
         grounding_judge=grounding_judge,
     )
+    answerer.model_label = settings.chat_model
+    return answerer
 
 
 def build_db_answerer(

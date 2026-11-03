@@ -51,3 +51,9 @@ def check_output(answer: str, scope: AccessScope | None) -> tuple[str, GuardVerd
     if not changes:
         return answer, GuardVerdict(guard="output", decision="PASS")
     return text, GuardVerdict(guard="output", decision="MASK", reason=", ".join(changes))
+
+
+def redact(text: str) -> str:
+    """Text safe to store at rest (Invariant 5): secrets and sensitive personal data masked for
+    everyone, whatever the reader's permissions. Used for audit records."""
+    return mask(_SECRETS.sub("[SECRET]", text))[0]

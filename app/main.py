@@ -14,6 +14,7 @@ Handlers stay thin: validate input, call the answerer, shape the output.
 
 import functools
 import logging
+import time
 import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -27,11 +28,13 @@ from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, Field, StringConstraints
 
 from app.answering.answer import Answerer, build_db_answerer
+from app.audit.recorder import AuditRecorder
 from app.auth import AuthError, authenticate
 from app.config import get_settings
 from app.db import connect, make_pool
 from app.documents import AclError, change_acl
 from app.domain import AnswerResult, User
+from app.guards.grounding import JUDGE_PROMPT_VERSION
 
 log = logging.getLogger(__name__)
 
@@ -100,6 +103,13 @@ def _authenticator_from_settings() -> Callable[[str], User]:
     return lambda token: authenticate(token, secret=settings.jwt_secret, db=pool)
 
 
+def _recorder_from_settings() -> AuditRecorder:
+    settings = get_settings()
+    return AuditRecorder(
+        make_pool(settings.database_url, name="rag-audit"), settings.audit_hmac_key
+    )
+
+
 def _database_from_settings() -> ConnectionPool:
     return make_pool(get_settings().database_url, name="rag-api")
 
@@ -114,6 +124,7 @@ def create_app(
     health_check: Callable[[], None] = _check_database,
     authenticator: Callable[[], Callable[[str], User]] = _authenticator_from_settings,
     database: Callable[[], object] = _database_from_settings,
+    recorder: Callable[[], object] = _recorder_from_settings,
 ) -> FastAPI:
     """Build the app. Tests pass fakes for each part; production uses the defaults."""
     get_database = functools.cache(database)  # opened on first use, not at start-up
@@ -122,6 +133,7 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.answerer = build()  # once at start-up, not per request
         app.state.authenticate = authenticator()
+        app.state.recorder = recorder()  # refuses to start without AUDIT_HMAC_KEY
         yield
 
     app = FastAPI(title="Secure RAG Assistant", version="0.5.1", lifespan=lifespan)
@@ -146,25 +158,54 @@ def create_app(
     def ask(
         body: AskRequest, request: Request, user: Annotated[User, Depends(current_user)]
     ) -> AskResponse | JSONResponse:
-        request_id = str(uuid.uuid4())
+        request_id, started = str(uuid.uuid4()), time.perf_counter()
+        answerer, audit = request.app.state.answerer, request.app.state.recorder
+        try:  # recorded before anything runs, so even a crash leaves a trace (spec 06 D5)
+            audit.start(request_id, user, body.question)
+        except Exception as error:
+            log.error("audit start failed request_id=%s error=%s", request_id, type(error).__name__)
+            return _unavailable()  # no audit, no answer (D6)
         try:
-            result = request.app.state.answerer.answer(body.question, scope=user.scope)
+            result = answerer.answer(body.question, scope=user.scope)
         except Exception as error:
             # Log the failure type only: never the question (Invariant 5) or the error text,
             # which can contain keys or internal details. The caller gets a generic message.
             log.error("ask failed request_id=%s error=%s", request_id, type(error).__name__)
+            try:
+                audit.fail(request_id, user, type(error).__name__, latency_ms=_ms(started))
+            except Exception as audit_error:
+                log.error("audit fail failed request_id=%s error=%s", request_id,
+                          type(audit_error).__name__)  # fmt: skip
             return _unavailable()
+        judge = JUDGE_PROMPT_VERSION if answerer.grounding_judge is not None else None
+        try:
+            audit.finish(request_id, user, result, latency_ms=_ms(started),
+                         model=answerer.model_label, judge_prompt_version=judge)  # fmt: skip
+        except Exception as error:
+            log.error(
+                "audit finish failed request_id=%s error=%s", request_id, type(error).__name__
+            )
+            return _unavailable()  # an answer that can't be explained isn't given (D6)
         return _response(result, request_id)
 
     @app.patch("/v1/documents/{doc_id}/acl", responses=_error_docs(401, 403, 404, 413, 503))
     def update_acl(
+        request: Request,
         body: AclChange,
         user: Annotated[User, Depends(current_user)],
         doc_id: Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9-]{0,199}$")],
     ) -> JSONResponse:
+        audit = request.app.state.recorder
         try:
-            changed = change_acl(get_database(), user, doc_id, body.allowed_roles)
+            changed = change_acl(
+                get_database(), user, doc_id, body.allowed_roles,
+                audit=lambda conn, change: audit.acl_changed(conn, user, change),
+            )  # fmt: skip
         except AclError as error:
+            try:  # a refused attempt is evidence too
+                audit.acl_refused(user, doc_id, error.status, error.detail)
+            except Exception as audit_error:
+                log.error("audit acl_refused failed error=%s", type(audit_error).__name__)
             return JSONResponse(status_code=error.status, content={"detail": error.detail})
         except Exception as error:
             log.error("acl change failed error=%s", type(error).__name__)
@@ -212,6 +253,10 @@ def _unauthorized() -> HTTPException:
     return HTTPException(
         status_code=401, detail="Not authenticated", headers={"WWW-Authenticate": "Bearer"}
     )
+
+
+def _ms(started: float) -> int:
+    return round((time.perf_counter() - started) * 1000)
 
 
 def _response(result: AnswerResult, request_id: str) -> AskResponse:

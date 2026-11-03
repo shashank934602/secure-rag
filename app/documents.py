@@ -5,6 +5,8 @@ filter without a join. A change updates both in ONE transaction, inside the user
 the copies never disagree, and another tenant's document is invisible (404, not 403).
 """
 
+from collections.abc import Callable
+
 import psycopg
 from psycopg_pool import ConnectionPool
 
@@ -24,9 +26,17 @@ class AclError(Exception):
 
 
 def change_acl(
-    db: psycopg.Connection | ConnectionPool, user: User, doc_id: str, roles: list[str]
+    db: psycopg.Connection | ConnectionPool,
+    user: User,
+    doc_id: str,
+    roles: list[str],
+    audit: Callable[[psycopg.Connection, dict], None] | None = None,
 ) -> dict:
-    """Set the roles that may read `doc_id` (a slug in the user's tenant); returns what changed."""
+    """Set the roles that may read `doc_id` (a slug in the user's tenant); returns what changed.
+
+    `audit` is called inside the same transaction (spec 06 D5): if it fails, the change is rolled
+    back, so an access change can never exist without its audit event.
+    """
     if UPLOADER not in user.permissions:
         raise AclError(403, "Not allowed to change document access")
     roles = list(dict.fromkeys(roles))  # drop repeats, keep order
@@ -41,13 +51,17 @@ def change_acl(
         if unknown:
             raise AclError(422, f"Unknown roles for this tenant: {unknown}")
         document = conn.execute(
-            "UPDATE documents SET allowed_roles = %s WHERE tenant_id = %s AND slug = %s "
-            "RETURNING id",
-            (roles, user.tenant_id, doc_id),
+            "SELECT id, allowed_roles FROM documents WHERE tenant_id = %s AND slug = %s FOR UPDATE",
+            (user.tenant_id, doc_id),
         ).fetchone()
         if document is None:  # doesn't exist, or belongs to another tenant (RLS hides it)
             raise AclError(404, "Document not found")
+        document_id, previous = document
+        conn.execute("UPDATE documents SET allowed_roles = %s WHERE id = %s", (roles, document_id))
         chunks = conn.execute(
-            "UPDATE chunks SET allowed_roles = %s WHERE document_id = %s", (roles, document[0])
+            "UPDATE chunks SET allowed_roles = %s WHERE document_id = %s", (roles, document_id)
         )
-    return {"doc_id": doc_id, "allowed_roles": roles, "chunks_updated": chunks.rowcount}
+        change = {"doc_id": doc_id, "allowed_roles": roles, "chunks_updated": chunks.rowcount}
+        if audit is not None:
+            audit(conn, {**change, "previous_roles": previous})
+    return change

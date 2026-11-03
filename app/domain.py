@@ -69,6 +69,7 @@ class AnswerResult(BaseModel):
     retrieved: list[ScoredChunk]
     prompt_version: str
     verdicts: list[GuardVerdict] = []  # every guard decision, in order (Phase 6 audits them)
+    timings: dict[str, float] = {}  # milliseconds per graph step (Phase 6, spec 06 D8)
 
 
 class AccessScope(BaseModel):
