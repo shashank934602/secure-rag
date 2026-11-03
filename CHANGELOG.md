@@ -13,6 +13,11 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Changed
+
+- `/v1/ask` and `PATCH …/acl` now write the audit trail: a request record at the start (HMAC + redacted text, never raw), then the outcome, sources, every guard decision, and per-step timings in one transaction; access changes are audited in their own transaction; if the audit can't be written, the request is refused (503) (ISS-051).
+- The answering graph times every step (`AnswerResult.timings`); `AUDIT_HMAC_KEY` added to `.env.example`.
+
 ### Added
 
 - Audit trail storage (migration `0005`): `requests`, `request_sources`, and `audit_events` chained per tenant with SHA-256 (`app/audit/chain.py`, `app/audit/log.py`); append-only for every role (triggers on UPDATE, DELETE, TRUNCATE); `verify` names the first edited or missing event; auditor user `audrey@aldermoor.example.com` (ISS-050).

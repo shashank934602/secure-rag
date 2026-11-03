@@ -631,4 +631,11 @@ loaded this log automatically, so the rule survived the new session.
 - Each company has its own chain, invisible to the other (RLS again).
 - Sources are stored as text references (`doc:page:index`), not links to chunk rows, so re-ingesting a document never erases what an old answer was based on.
 
-**Next session starts with:** S2, recording every request into the audit log.
+**Update — Phase 6 S2: every request recorded (ISS-051):**
+- On arrival, a **request record** is written first (status `started`) with a keyed fingerprint (HMAC) of the question and a redacted copy. The raw text is never stored: 0 rows anywhere contained the real IBAN Alice typed.
+- At the end, **one transaction** stores the outcome, the chunks used, every guard decision, and the timings. If the audit can't be written, the question isn't answered (503, the model is never called).
+- Access changes are audited **inside the change's own transaction**: if the audit fails, the change is rolled back.
+- **The payoff:** the log explained a mysterious "I don't know". The judge had rejected the answer twice because two of our documents *disagree* (expense policy: "paid with the next monthly salary"; payee file: "bank transfer within 5 working days"). A real conflicting-documents case (ISS-019) that only the audit made visible.
+- **Timings separated at last:** generating the answer 3.0 s, search 1.3 s, input guard 0.18 s.
+
+**Next session starts with:** S3, auditor endpoints and `/verify`.

@@ -11,6 +11,9 @@ All 5 slices built; 45 offline tests pass; first real run done with Mistral embe
 
 ## Completed
 
+- **Phase 6 S2 — every request recorded** (2026-11-03, ISS-051)
+  - `/v1/ask`: request row at the start (HMAC + redacted question), then status, redacted answer, sources, every guard decision, and per-step timings in one transaction; fail closed. ACL changes audited atomically. `AUDIT_HMAC_KEY` in `.env`. 220 offline, 94 db tests.
+  - Real run: the log explained a "No-Answer" (the judge rejected an answer twice because two documents disagree on how reimbursements are paid, ISS-019); timings generate 3.0 s / retrieve 1.3 s / input guard 0.18 s.
 - **Phase 6 S1 — hash-chained audit log** (2026-11-03, ISS-050)
   - Migration `0005` (dev DB at `0005 (head)`): `requests`, `request_sources`, `audit_events` (RLS; append-only triggers incl. TRUNCATE; rag_app INSERT/SELECT only on events); auditor `audrey@aldermoor.example.com`. `app/audit/chain.py`, `app/audit/log.py`. 220 offline, 86 db tests.
 - **`v0.5.1` — fixes from the first independent test** (2026-11-03)
