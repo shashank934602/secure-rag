@@ -672,4 +672,12 @@ loaded this log automatically, so the rule survived the new session.
 - **Measured why per-case checks matter:** weakening the guard (threshold 0.5 → 0.9) only moved the rate 73.7% → 71.1%, but the per-case check named the 9 attacks that now got through. Gate: FAILED, exit 1.
 - On any branch but `main`, the gate reads its bar **from `main`**: a change can't weaken a guard and lower the bar in the same breath.
 
-**Next session starts with:** Phase 7 — the quality baseline, CI proof on a demo branch, the tester, `v0.7.0`.
+**Update — Phase 7 finished and released (`v0.7.0`):**
+- **Quality, honestly measured:** everything the system says is supported by its documents (faithfulness 1.000), but it says "I don't know" to 3 answerable questions, so correctness is 0.667. It errs on the side of silence: the right failure for a security product.
+- **The free tier fought back:** the eval judge and the system's grounding judge share one Mistral limit (judging while answering broke 8 of 20 questions), and Groq allows 200,000 tokens a day (about 4 golden runs). Fixes: judge after answering; never save a baseline from an incomplete run; judge a finished run later without asking the generator again. Lesson: **the measurement must never disturb what it measures.**
+- **Done when, for real:** a demo branch weakened the guard *and* lowered the floor. GitHub failed it on its own: the bar came from `main`, and 9 named attacks got through. Tests and lint stayed green: a weakened guard breaks no unit test.
+- **The tester broke the gate twice:** switching a guard off passed, and deleting the attacks that now get through hid them. Both fixed (switches pinned, guards built like the app, missing or rewritten cases count). Lesson: **a gate is code under attack too.** The last gap (a branch editing the gate itself) is closed by code-owner review, which only the owner can switch on.
+
+**Still unclear:** explain-back questions for Lessons 1b–7 (study chat).
+
+**Next session starts with:** the owner's GitHub settings (ISS-063: secrets, required checks, code-owner review), then Phase 8 — ship it.

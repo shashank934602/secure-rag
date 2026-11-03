@@ -13,6 +13,17 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-11-03 — Phase 7: full evaluation + CI gate
+
+Phase 7 "done when" passes: a change that weakens a guard is blocked automatically. A demo branch raised the injection
+threshold to 0.9 and lowered the floor in the same commit; GitHub Actions failed it at the security gate (run 41609303375:
+bar from `main`, block rate 0.711 < 0.72, 9 named per-case regressions) while lint, tests, and database tests passed. Bigger
+sets give honest numbers: **73.7% of attacks blocked (95% CI 67.7–79.0%)** where 50 cases had said 90%; false refusals 6.9%;
+quality correctness 0.667 and faithfulness 1.000. The independent test (`docs/test-reports/v0.7.0.md`): release with known
+issues, no critical or high; it found two weakenings the gate missed (a switched-off guard, deleted cases), fixed below and
+re-checked (both now fail: 274 and 35 regressions). Open: ISS-063 (secrets, branch protection, code-owner review),
+ISS-064 (free-tier limits).
+
 ### Added
 
 - Phase 7 spec (`context/feature-specs/07-eval-gate.md`), ADR-0006 (the gate is a ratchet with per-case regressions; the architecture's values are targets), glossary terms (dev/test split, contamination, per-case regression, ratchet, target, eval judge, faithfulness, pinned model), ISS-059 … ISS-063.
