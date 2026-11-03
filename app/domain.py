@@ -70,6 +70,7 @@ class AnswerResult(BaseModel):
     prompt_version: str
     verdicts: list[GuardVerdict] = []  # every guard decision, in order (Phase 6 audits them)
     timings: dict[str, float] = {}  # milliseconds per graph step (Phase 6, spec 06 D8)
+    usage: dict[str, dict[str, int]] = {}  # model → input/output/total tokens (spec 07 D4)
 
 
 class Progress(BaseModel):

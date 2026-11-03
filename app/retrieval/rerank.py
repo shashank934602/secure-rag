@@ -22,8 +22,8 @@ class CrossEncoderReranker:
     Loaded on first use; the first download is about 1 GB, then it comes from the local cache.
     """
 
-    def __init__(self, model_name: str = "BAAI/bge-reranker-base") -> None:
-        self.model_name = model_name
+    def __init__(self, model_name: str = "BAAI/bge-reranker-base", revision: str | None = None):
+        self.model_name, self.revision = model_name, revision  # revision: an exact commit
         self._model = None  # loaded on first use, so building an answerer stays cheap
 
     def load(self) -> None:
@@ -31,7 +31,7 @@ class CrossEncoderReranker:
         if self._model is None:
             from sentence_transformers import CrossEncoder  # heavy import: only when used
 
-            self._model = CrossEncoder(self.model_name)
+            self._model = CrossEncoder(self.model_name, revision=self.revision)
 
     def rerank(self, question: str, candidates: list[ScoredChunk], k: int) -> list[ScoredChunk]:
         if not candidates:

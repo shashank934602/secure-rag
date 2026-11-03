@@ -4,6 +4,7 @@ from pathlib import Path
 from string import Template
 
 from langchain.chat_models import init_chat_model
+from langchain_core.callbacks import get_usage_metadata_callback
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -15,7 +16,7 @@ from app.db import make_pool
 from app.domain import AccessScope, AnswerResult, Citation, GuardVerdict, ScoredChunk
 from app.guards.context import ContextGuard
 from app.guards.grounding import GroundingJudge
-from app.guards.injection import DebertaInjectionClassifier, InputGuard
+from app.guards.injection import InputGuard, injection_classifier
 from app.guards.output import check_output
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
@@ -71,16 +72,20 @@ class Answerer:
 
     def answer(self, question: str, scope: AccessScope | None = None) -> AnswerResult:
         """Raises GuardUnavailable if a guard can't run: the caller must refuse (fail closed)."""
-        final = self.graph.invoke(
-            {"question": question, "scope": scope, "verdicts": [], "timings": {}}
-        )
+        with get_usage_metadata_callback() as tokens:  # every model call, per model (spec 07 D4)
+            final = self.graph.invoke(
+                {"question": question, "scope": scope, "verdicts": [], "timings": {}}
+            )
         verdicts, timings = final["verdicts"], final["timings"]
         if final["status"] == "refused":
-            return self._result("refused", REFUSAL, [], [], verdicts, timings)
-        if final["status"] == "no_answer":
-            return self._result("no_answer", NO_ANSWER, [], final["retrieved"], verdicts, timings)
-        answer, citations = final["replies"][-1], final["citations"]
-        return self._result("answered", answer, citations, final["retrieved"], verdicts, timings)
+            result = self._result("refused", REFUSAL, [], [], verdicts, timings)
+        elif final["status"] == "no_answer":
+            result = self._result("no_answer", NO_ANSWER, [], final["retrieved"], verdicts, timings)
+        else:
+            answer, citations = final["replies"][-1], final["citations"]
+            result = self._result("answered", answer, citations, final["retrieved"], verdicts,
+                                  timings)  # fmt: skip
+        return result.model_copy(update={"usage": token_counts(tokens.usage_metadata)})
 
     def warm_up(self) -> None:
         """Load the local models before the first request (tester-style finding, 2026-11-03: the
@@ -177,6 +182,12 @@ class Answerer:
         )
 
 
+def token_counts(usage: dict) -> dict[str, dict[str, int]]:
+    """Model name → input, output, and total tokens (the provider's own counts)."""
+    keys = ("input_tokens", "output_tokens", "total_tokens")
+    return {model: {k: int(counts.get(k, 0)) for k in keys} for model, counts in usage.items()}
+
+
 def _user_message(question: str, retrieved: list[ScoredChunk]) -> str:
     documents = "\n\n".join(
         f'<document id="{r.chunk.doc_id}:{r.chunk.page}">\n{r.chunk.text}\n</document>'
@@ -214,9 +225,9 @@ def build_answerer(
         max_retries=1,
     )
     if reranker is None and settings.rerank:
-        reranker = CrossEncoderReranker(settings.reranker_model)
+        reranker = CrossEncoderReranker(settings.reranker_model, settings.reranker_revision)
     # One local classifier serves the input guard (questions) and the context guard (chunks).
-    classifier = DebertaInjectionClassifier() if settings.input_guard else None
+    classifier = injection_classifier(settings) if settings.input_guard else None
     if input_guard is None and classifier is not None:
         input_guard = InputGuard(classifier, settings.injection_threshold)
     if context_guard is None and settings.context_guard:

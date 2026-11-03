@@ -13,6 +13,20 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- Phase 7 spec (`context/feature-specs/07-eval-gate.md`), ADR-0006 (the gate is a ratchet with per-case regressions; the architecture's values are targets), glossary terms (dev/test split, contamination, per-case regression, ratchet, target, eval judge, faithfulness, pinned model), ISS-059 … ISS-063.
+- Eval sets grown: 320 own attacks in 7 categories, 339 benign questions (88 "hard" ones using attackers' words, 44 multilingual), 109 document passages for the context guard, and the public `deepset/prompt-injections` test split (116, Apache-2.0) reported separately; a fixed dev/test split by id hash (`eval/datasets/README.md`) (ISS-059).
+- `python -m eval.security`: input and context guards over every set and over all 28 real corpus chunks, with 95% Wilson intervals and per-category rates. Baseline (test split): **blocked 171/232 = 73.7% (67.7–79.0%)**, false refusals 16/231 = 6.9% (4.3–10.9%), hard benign 12.7%, context guard drops 26/47 = 55.3% and wrongly drops 6/31 legitimate passages, **0/28 real chunks dropped**; the 50-case set had said 90% (ISS-059).
+- `python -m eval.gate` with `eval/thresholds.yaml`: pinned models (hard), per-case regressions (hard; borderline flips within 0.05 of the threshold are warnings), floors and ceilings just below the baseline, architecture targets reported; JSON + HTML report with a diff against the baseline and a Markdown summary in CI; `--from-ref` reads the bar from `main` so a branch can't lower its own. Raising the classifier threshold to 0.9 fails it: block rate 0.711 < 0.72 and 9 per-case regressions (ISS-060).
+- Token usage per model on every answer (`AnswerResult.usage`, also in the audit `finish` event) and list-price cost per query; an eval judge (`mistral-small-2603`, prompts `eval_correctness_v1`, `eval_faithfulness_v1`) scores correctness and faithfulness, retrying on rate limits (ISS-061).
+- GitHub Actions (`.github/workflows/ci.yml`): lint + offline tests, database tests, the security gate, and the quality gate (runs when the API-key secrets exist) (ISS-062).
+
+### Changed
+
+- Models are pinned to exact versions: the grounding judge is `ministral-8b-2512` (was `-latest`); the injection classifier and reranker load fixed Hugging Face commits (`injection_revision`, `reranker_revision`).
+- Linux installs the CPU-only PyTorch build (no GPU libraries in CI); `torch` and `pyyaml` are direct dependencies.
+
 ## [0.6.0] — 2026-11-03 — Phase 6: audit trail + observability
 
 Phase 6 "done when" passes: any request can be opened with every decision visible (`GET /v1/audit/requests/{id}`), and

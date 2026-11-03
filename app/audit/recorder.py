@@ -57,8 +57,10 @@ class AuditRecorder:
         model: str,
         judge_prompt_version: str | None = None,
     ) -> None:
-        outcome = _event(request_id, user, "finish", result.status.upper(),
-                         details={"timings_ms": result.timings})  # fmt: skip
+        details = {"timings_ms": result.timings}
+        if result.usage:  # tokens per model: what the request cost (spec 07 D4)
+            details["usage"] = result.usage
+        outcome = _event(request_id, user, "finish", result.status.upper(), details=details)
         events = [*_decisions(request_id, user, result.verdicts, result.retrieved), outcome]
 
         with borrow(self.db) as conn, tenant_scope(conn, user.tenant_id):  # all or nothing

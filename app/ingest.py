@@ -26,7 +26,7 @@ from langchain_core.embeddings import Embeddings
 from app.config import Settings, get_settings
 from app.db import connect, tenant_scope
 from app.domain import Page
-from app.guards.injection import DebertaInjectionClassifier, InjectionClassifier
+from app.guards.injection import InjectionClassifier, injection_classifier
 from app.guards.pii import mask
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.loaders import load_pages
@@ -230,7 +230,7 @@ def main(
     embeddings = embeddings or make_embeddings(settings.embedding_model)
 
     with connect(settings.database_url, autocommit=True) as conn:
-        classifier = DebertaInjectionClassifier() if settings.input_guard else None
+        classifier = injection_classifier(settings) if settings.input_guard else None
         report = ingest_folder(
             conn,
             settings,

@@ -43,6 +43,13 @@ class InjectionClassifier(Protocol):
         ...
 
 
+def injection_classifier(settings) -> "DebertaInjectionClassifier":
+    """The classifier the settings pin (model and exact revision)."""
+    return DebertaInjectionClassifier(
+        settings.injection_model, revision=settings.injection_revision
+    )
+
+
 def rule_match(text: str) -> str | None:
     """The name of the first attack rule the text matches, or None."""
     return next((name for name, rx in _COMPILED.items() if rx.search(text)), None)
@@ -55,8 +62,15 @@ class DebertaInjectionClassifier:
     overlapping windows and the highest window wins. Loaded on first use (~740 MB download once).
     """
 
-    def __init__(self, model_name: str = CLASSIFIER_MODEL, window: int = 500, overlap: int = 50):
+    def __init__(
+        self,
+        model_name: str = CLASSIFIER_MODEL,
+        window: int = 500,
+        overlap: int = 50,
+        revision: str | None = None,
+    ):
         self.model_name, self.window, self.overlap = model_name, window, overlap
+        self.revision = revision  # an exact commit (spec 07 D6); None = the newest
         self._pipeline = None
 
     def load(self) -> None:
@@ -64,7 +78,9 @@ class DebertaInjectionClassifier:
         if self._pipeline is None:
             from transformers import pipeline  # heavy import: only when used
 
-            self._pipeline = pipeline("text-classification", model=self.model_name)
+            self._pipeline = pipeline(
+                "text-classification", model=self.model_name, revision=self.revision
+            )
 
     def score(self, text: str) -> float:
         self.load()

@@ -488,7 +488,11 @@ flowchart LR
     GATE -->|no| FAIL[Fail CI]
 ```
 
-| Metric | How it's measured | Gate |
+How the gate uses these values (ADR-0006): the "Target" column is the goal, reported as met or missed; CI fails on the
+**hard fails** (leaks, ACL change, an attack that used to be blocked now passing, a model that differs from its pin) and on
+**floors** set just below the current baseline in `eval/thresholds.yaml`. A target becomes a floor once it is reached.
+
+| Metric | How it's measured | Target |
 |--------|-------------------|------|
 | Retrieval recall@5 | Expected source id in top-5 (report dense-only vs hybrid) | ≥ 0.85 |
 | Answer correctness | RAGAS vs expected answer | ≥ 0.75 |
@@ -501,7 +505,8 @@ flowchart LR
 
 Rules:
 - Judge model names and versions are pinned in `eval/thresholds.yaml`; changing them requires re-baselining.
-- Seed the adversarial set from public benchmarks (e.g. BIPIA-style indirect-injection cases) plus your own.
+- Own cases (adversarial ≥ 300, benign ≥ 300, indirect passages ≥ 100) are gated on a fixed `test` split; a public slice (`deepset/prompt-injections`) is reported separately, since it may overlap the classifier's training data.
+- Faithfulness and correctness are scored by a pinned eval judge with our own prompts (the RAGAS method, spec 07 D9).
 - A **minimal harness exists from Phase 2**, so every later phase is measured against a baseline; the CI gate arrives in Phase 7.
 
 ---

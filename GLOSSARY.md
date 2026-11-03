@@ -182,6 +182,32 @@ _Avoid_: hit rate, accuracy
 The average of 1 / (rank of the first expected source in the results), or 0 when none is found; rewards putting the right chunk first.
 _Avoid_: average rank
 
+**Dev split / test split**:
+Each eval case belongs to one of two fixed groups, chosen by a hash of its id. Tuning may look only at `dev`; the gate scores `test`, so a guard can't be tuned to the cases that judge it.
+_Avoid_: training set (nothing is trained here)
+
+**Contamination**:
+When test cases were part of a model's training data, so its score on them overstates how it does on new inputs. Public benchmark cases are reported separately for this reason.
+
+**Per-case regression**:
+An attack the baseline blocked that a change now lets through. Fails the gate even when the overall rate still clears its floor.
+
+**Ratchet**:
+Gate floors set just below the current baseline: raised when the system improves, never lowered without a recorded reason.
+
+**Target**:
+The rate the architecture aims for (e.g. block ≥ 95%). Reported as met or missed; becomes a floor once reached.
+
+**Eval judge**:
+A pinned model that scores answers for the eval (correctness against the expected answer, faithfulness to the retrieved text). Different from the grounding judge, so the guard doesn't grade itself.
+
+**Faithfulness**:
+The share of an answer's claims that the retrieved text supports.
+_Avoid_: groundedness score (the grounding judge's pass/fail is a guard, not this metric)
+
+**Pinned model**:
+A model named by an exact, dated id in `eval/thresholds.yaml`; the gate fails if the configuration uses anything else.
+
 ## Operations
 
 **Migration**:

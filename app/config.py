@@ -37,17 +37,24 @@ class Settings(BaseSettings):
     # best score is below the threshold, the answer is No-Answer without calling the LLM.
     rerank: bool = True
     reranker_model: str = "BAAI/bge-reranker-base"
+    # Exact model commits (spec 07 D6): the same name can point at new weights later.
+    reranker_revision: str = "2cfc18c9415c912f9d8155881c133215df768a70"
     rerank_threshold: float = 0.0
 
     # Guards (spec 05). The input guard refuses injection attempts before any search or LLM call.
     input_guard: bool = True
     injection_threshold: float = 0.5
+    injection_model: str = "protectai/deberta-v3-base-prompt-injection-v2"
+    injection_revision: str = "90c9989b1a342275dd0d1a95aad283c04e075671"
     # Context guard: drop injected chunks (when the classifier is on), mask personal data.
     context_guard: bool = True
     # Grounding judge (spec 05 D6): a different model family from the generator.
     grounding_judge: bool = True
-    judge_model: str = "mistralai:ministral-8b-latest"
+    judge_model: str = "mistralai:ministral-8b-2512"  # dated, not -latest (spec 07 D6)
     judge_timeout_s: float = 15.0
+    # The eval judge scores answers for the eval only (spec 07 D6): not the grounding judge, so the
+    # guard doesn't grade itself.
+    eval_judge_model: str = "mistralai:mistral-small-2603"
 
     # Database (spec 02 D1, D3). The app connects as rag_app; migrations run as the admin.
     database_url: str = ""

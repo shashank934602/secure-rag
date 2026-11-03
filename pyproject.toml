@@ -22,7 +22,9 @@ dependencies = [
     "pyjwt>=2.15.1",
     "pypdf>=6.20.0",
     "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.3",
     "sentence-transformers>=6.2.0",
+    "torch>=2.15.0",
     "uvicorn>=0.54.0",
 ]
 
@@ -34,6 +36,15 @@ dev = [
     "ruff>=0.17.0",
     "testcontainers[postgres]>=4.15.0",
 ]
+
+# Linux (CI) uses the CPU-only PyTorch build: the default one bundles GPU libraries (several GB).
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

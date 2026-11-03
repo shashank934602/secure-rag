@@ -1,13 +1,18 @@
 """Run the golden set through the API and score it (spec 02 step 8, ISS-026).
 
     uv run python -m eval.run                          # report → eval/reports/<time>.json
-    uv run python -m eval.run --save-baseline phase3   # also → eval/baselines/phase3.json
+    uv run python -m eval.run --save-baseline phase7   # also → eval/baselines/phase7.json
+    uv run python -m eval.run --no-judge               # skip the eval judge (no extra calls)
 
 Retrieval settings come from the environment, e.g. RETRIEVAL_MODE=hybrid RERANK=true.
 
 Answers go through the real API in-process (FastAPI test client), with the real models and the
 database; retrieval metrics come from the same answerer's retriever, since the API doesn't return
 chunks. Free-tier models sometimes refuse a burst of calls, so a failed request is retried.
+
+Phase 7 (spec 07 D4): a capturing recorder keeps each request's full result (token usage, the
+chunks the LLM actually saw); the pinned eval judge scores correctness and faithfulness; tokens
+become a list-price cost per query (`eval/thresholds.yaml`).
 """
 
 import argparse
@@ -20,18 +25,39 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+import yaml
 from fastapi.testclient import TestClient
+from langchain.chat_models import init_chat_model
 
 from app.answering.answer import PROMPT_VERSION, Answerer, build_db_answerer
 from app.audit.recorder import NullRecorder
 from app.config import ROOT, Settings, get_settings
-from app.domain import User
+from app.domain import AnswerResult, User
 from app.main import create_app
-from eval.metrics import QuestionResult, key_fact_score, recall_at_k, reciprocal_rank, summarise
+from eval.judges import CORRECTNESS, FAITHFULNESS, EvalJudge
+from eval.metrics import (
+    QuestionResult,
+    cost_per_query,
+    judged_scores,
+    key_fact_score,
+    recall_at_k,
+    reciprocal_rank,
+    summarise,
+)
 
 GOLDEN = ROOT / "eval" / "datasets" / "golden.jsonl"
 REPORTS = ROOT / "eval" / "reports"
 BASELINES = ROOT / "eval" / "baselines"
+
+
+class CapturingRecorder(NullRecorder):
+    """Stores nothing, but keeps each finished request's full result for the eval."""
+
+    def __init__(self) -> None:
+        self.results: dict[str, AnswerResult] = {}
+
+    def finish(self, request_id: str, user: User, result: AnswerResult, **kwargs) -> None:
+        self.results[request_id] = result
 
 
 def load_golden(path: Path = GOLDEN) -> list[dict]:
@@ -47,6 +73,7 @@ def evaluate(
     retries: int = 2,
     retry_wait_s: float = 5.0,
     clock: Callable[[], float] = time.perf_counter,
+    judge: EvalJudge | None = None,
 ) -> list[QuestionResult]:
     """Ask every question through the API; record what was retrieved, the answer, and the time."""
     scope = getattr(answerer.index, "default_scope", None)  # Postgres: settings tenant + roles
@@ -57,8 +84,9 @@ def evaluate(
         roles=scope.roles if scope else [],
         permissions=[],
     )
+    captured = CapturingRecorder()  # quality runs aren't user requests: nothing is stored
     app = create_app(
-        recorder=NullRecorder,  # quality runs aren't user requests
+        recorder=lambda: captured,
         build=lambda: answerer,
         health_check=lambda: None,
         authenticator=lambda: lambda _: user,
@@ -71,6 +99,15 @@ def evaluate(
             start = clock()
             body = _ask(client, row["question"], retries, retry_wait_s)
             latency = clock() - start
+            full = captured.results.get(body["request_id"]) if body else None
+            correctness = faithfulness = None
+            if judge is not None and full is not None and full.status == "answered":
+                if row["answerable"]:
+                    correctness = judge.correctness(row["question"], row["expected_answer"],
+                                                    full.answer)  # fmt: skip
+                faithfulness = judge.faithfulness(
+                    full.answer, [h.chunk.text for h in full.retrieved]
+                )
             results.append(
                 QuestionResult(
                     id=row["id"],
@@ -81,6 +118,9 @@ def evaluate(
                     status=body["status"] if body else "error",
                     answer=body["answer"] if body else "",
                     latency_s=round(latency, 3),
+                    correctness=correctness,
+                    faithfulness=faithfulness,
+                    usage=full.usage if full else {},
                 )
             )
             time.sleep(pause_s)
@@ -97,7 +137,15 @@ def _ask(client: TestClient, question: str, retries: int, wait_s: float) -> dict
     return None
 
 
-def build_report(results: list[QuestionResult], settings: Settings) -> dict:
+def load_prices() -> dict:
+    return yaml.safe_load((ROOT / "eval" / "thresholds.yaml").read_text(encoding="utf-8"))["prices"]
+
+
+def build_report(results: list[QuestionResult], settings: Settings, judged: bool = True) -> dict:
+    summary = summarise(results, k=settings.top_k)
+    if judged:
+        summary |= judged_scores(results)
+    summary |= cost_per_query(results, load_prices())
     return {
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "git_commit": _git_commit(),
@@ -115,8 +163,11 @@ def build_report(results: list[QuestionResult], settings: Settings) -> dict:
             "rerank": settings.rerank,
             "reranker_model": settings.reranker_model if settings.rerank else None,
             "rerank_threshold": settings.rerank_threshold if settings.rerank else None,
+            "judge_model": settings.judge_model,
+            "eval_judge_model": settings.eval_judge_model if judged else None,
+            "eval_judge_prompts": [CORRECTNESS, FAITHFULNESS] if judged else None,
         },
-        "summary": summarise(results, k=settings.top_k),
+        "summary": summary,
         "errors": sum(r.status == "error" for r in results),
         "results": [asdict(r) for r in results],
     }
@@ -163,12 +214,17 @@ def main(argv: list[str] | None = None) -> int:
         "--save-baseline", metavar="NAME", help="also write eval/baselines/NAME.json (committed)"
     )
     parser.add_argument("--pause", type=float, default=1.0, help="seconds between questions")
+    parser.add_argument("--no-judge", action="store_true", help="skip correctness/faithfulness")
     args = parser.parse_args(argv)
 
     settings = get_settings()
     answerer = build_db_answerer(settings)
-    results = evaluate(load_golden(), answerer, k=settings.top_k, pause_s=args.pause)
-    report = build_report(results, settings)
+    judge = None
+    if not args.no_judge:
+        model = init_chat_model(settings.eval_judge_model, temperature=0, timeout=60)
+        judge = EvalJudge(model)
+    results = evaluate(load_golden(), answerer, k=settings.top_k, pause_s=args.pause, judge=judge)
+    report = build_report(results, settings, judged=judge is not None)
 
     _print(results, report, settings.top_k)
     print(f"\nreport: {write_report(report).relative_to(ROOT)}")

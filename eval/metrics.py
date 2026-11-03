@@ -5,7 +5,7 @@ order (the same page can appear twice when two of its chunks were retrieved).
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from statistics import mean
 
 # Characters real models write that look like plain spaces or hyphens but aren't.
@@ -25,6 +25,9 @@ class QuestionResult:
     status: str
     answer: str
     latency_s: float
+    correctness: float | None = None  # eval judge vs the expected answer (Phase 7)
+    faithfulness: float | None = None  # eval judge: claims supported by what the LLM saw
+    usage: dict[str, dict[str, int]] = field(default_factory=dict)  # model → token counts
 
 
 def recall_at_k(expected: list[str], retrieved: list[str], k: int = 5) -> float:
@@ -96,6 +99,41 @@ def summarise(results: list[QuestionResult], k: int = 5) -> dict[str, float | in
         "latency_p50_s": percentile(latencies, 50),
         "latency_p95_s": percentile(latencies, 95),
     }
+
+
+def judged_scores(results: list[QuestionResult]) -> dict[str, float | int | None]:
+    """Correctness over answerable questions (one not answered scores 0) and faithfulness over
+    answered ones; questions the judge couldn't score are counted, not guessed."""
+    answerable = [r for r in results if r.answerable]
+    correctness = [0.0 if r.status != "answered" else r.correctness for r in answerable]
+    faithful = [r.faithfulness for r in results if r.status == "answered"]
+    scored_c = [c for c in correctness if c is not None]
+    scored_f = [f for f in faithful if f is not None]
+    return {
+        "correctness": mean(scored_c) if scored_c else None,
+        "faithfulness": mean(scored_f) if scored_f else None,
+        "judge_unscored": correctness.count(None) + faithful.count(None),
+    }
+
+
+def cost_per_query(results: list[QuestionResult], prices: dict[str, dict[str, float]]) -> dict:
+    """Average tokens and list-price cost per question. Prices are USD per million tokens, keyed
+    `provider:model`; providers report the model without the provider, so match on that part."""
+    by_model = {key.split(":", 1)[-1]: price for key, price in prices.items()}
+    tokens = cost = 0.0
+    unpriced = set()
+    for r in results:
+        for model, counts in r.usage.items():
+            tokens += counts.get("total_tokens", 0)
+            price = by_model.get(model)
+            if price is None:
+                unpriced.add(model)
+                continue
+            cost += (counts.get("input_tokens", 0) * price["input"]
+                     + counts.get("output_tokens", 0) * price["output"]) / 1_000_000  # fmt: skip
+    n = max(len(results), 1)
+    return {"tokens_per_query": round(tokens / n, 1), "cost_per_query_usd": round(cost / n, 6),
+            "unpriced_models": sorted(unpriced)}  # fmt: skip
 
 
 def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
