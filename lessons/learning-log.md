@@ -612,4 +612,9 @@ loaded this log automatically, so the rule survived the new session.
 
 **What I can now explain:** pending (study chat).
 
-**Next session starts with:** start Docker, re-run the tester on `v0.5.0`, fix what it finds, then write spec 06 and build Phase 6, with the tester at the end.
+**Update — tester re-run and Phase 6 spec:**
+- The tester is checking `v0.5.0` again (Docker started). Its reports will be kept in the repo under `docs/test-reports/`, so every phase's independent results are documented.
+- Spec 06 written: request record at the start, a hash-chained append-only audit log (any edit or deletion breaks the chain), auditor endpoints with `/verify`, no raw question text stored (keyed hash + redacted text), fail closed if the audit can't be written, and per-step timings. Langfuse deferred (ISS-054).
+- Glossary before code: request record, hash chain.
+
+**Next session starts with:** review the tester's findings, then Phase 6 S1 (hash chain).

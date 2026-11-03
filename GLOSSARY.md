@@ -141,6 +141,14 @@ Treat an unavailable or timed-out guard as a refusal rather than skipping it.
 One append-only, hash-chained record of a guard verdict or stage outcome for a request.
 _Avoid_: log line, trace
 
+**Request record**:
+The row written when a question arrives (status `started`) and finalised when it ends; holds a keyed hash of the question and redacted text, never the raw question.
+_Avoid_: request log
+
+**Hash chain**:
+Each audit event stores the hash of the previous one, so editing or deleting any past event breaks every hash after it.
+_Avoid_: blockchain, checksum
+
 **Audit trail**:
 All audit events for a tenant, in hash-chain order.
 
