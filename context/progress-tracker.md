@@ -4,13 +4,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 6 — audit trail + observability** (`context/feature-specs/06-audit-observability.md`): spec written 2026-11-03, slices S1–S4 (ISS-050 … ISS-053); Langfuse deferred (ISS-054). `v0.5.1` (2026-11-03) fixed the tester's findings on `v0.5.0`. **Phase 5 done: released `v0.5.0` on 2026-11-02**: input guard, context guard, output checks, grounding judge, all fail closed. Phase 4 `v0.4.0`, Phase 3 `v0.3.0`, Phase 2 `v0.2.0`, Phase 1 `v0.1.0`.
+**Phase 7 — full evaluation + CI gate** (next; no spec yet). **Phase 6 done: released `v0.6.0` on 2026-11-03**: hash-chained append-only audit trail, every request and access change recorded (failures included), auditor endpoints with `/verify`, structured request logs, models warmed at start-up; independent test + re-test passed. `v0.5.1` fixed the tester's findings on `v0.5.0`. Phase 5 `v0.5.0`, Phase 4 `v0.4.0`, Phase 3 `v0.3.0`, Phase 2 `v0.2.0`, Phase 1 `v0.1.0`.
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 6 released — `v0.6.0`** (2026-11-03, ISS-053)
+  - Independent test: release with known issues (no critical/high). Fixed: chunked bodies now hit the 16 KB limit (413); failed requests record their earlier decisions, failed step, timings, and a JSON log line; refused/not-found audit reads are audited; guards record PASS with a reason. Re-test: all four confirmed, release. 226 offline, 103 db, 7 live. First request after restart 4.5 s, second 3.3 s. Logged: ISS-057, ISS-058.
 - **Phase 6 S3 — the auditor's view** (2026-11-03, ISS-052)
   - `GET /v1/audit/requests/{id}`, `GET /v1/audit/requests`, `GET /v1/audit/verify` for users with `auditor` (audrey); tenant-scoped; reads are audited. 220 offline, 101 db tests. Phase 6 "done when" met: any request can be opened with every decision; tampering is detected.
 - **Phase 6 S2 — every request recorded** (2026-11-03, ISS-051)

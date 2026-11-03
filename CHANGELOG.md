@@ -13,21 +13,36 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-11-03 — Phase 6: audit trail + observability
+
+Phase 6 "done when" passes: any request can be opened with every decision visible (`GET /v1/audit/requests/{id}`), and
+an edited or deleted event is detected by `/v1/audit/verify`. Real use: the audit explained a No-Answer as a genuine
+conflict between two documents (ISS-019). The independent test (`docs/test-reports/v0.6.0.md`): **release with known
+issues, no critical or high findings**; suites 222 offline / 101 db / 7 live, 0 leaks, guards 45/50 unchanged, chain
+intact after 12 parallel requests. Triage: T-1, T-2, T-4, T-5 fixed below; T-3 no action (the id is the attacker's own
+input); T-6 corrected below; T-7 → ISS-057, ISS-058; T-8 noted (only Aldermoor has a seeded auditor); T-9 → ISS-048;
+T-10 is ISS-019. After the fixes: 226 offline / 103 db / 7 live; the tester's re-test (`docs/test-reports/v0.6.0-retest.md`)
+confirmed all four fixes on a real server: **release**.
+
 ### Added
 
-- One structured JSON log line per request (`app.requests`: request id, user, tenant, status, latency, per-step timings; never the question) (ISS-053).
-- The API loads the local models (injection classifier, reranker) at start-up: the first request after a restart went from 14.8 s to 3.8 s (ISS-029, ISS-053).
+- Audit trail storage (migration `0005`): `requests`, `request_sources`, and `audit_events` chained per tenant with SHA-256 (`app/audit/chain.py`, `app/audit/log.py`); append-only for every role (triggers on UPDATE, DELETE, TRUNCATE); `verify` names the first edited or missing event; auditor user `audrey@aldermoor.example.com` (ISS-050).
 - Auditor endpoints (`auditor` permission): `GET /v1/audit/requests/{id}` (the request, its sources, and every decision in order), `GET /v1/audit/requests` (search by status, user, time), `GET /v1/audit/verify` (recompute the hash chain); tenant-scoped; every read is itself audited (ISS-052).
+- One structured JSON log line per request (`app.requests`: request id, user, tenant, status, latency, per-step timings; never the question) (ISS-053).
+- The API loads the local models (injection classifier, reranker) at start-up instead of on the first request. On the day it was added, the first request after a restart went from 14.8 s to 3.8 s; the tester's later run saw no cold-start penalty (first 6.0 s, second 6.3 s), with the total dominated by the free-tier generator (1–12 s per call); re-measured after a fresh restart: first 4.5 s, second 3.3 s (ISS-029, ISS-053; tester T-6).
+- Phase 6 spec (`context/feature-specs/06-audit-observability.md`), ISS-050 … ISS-054; glossary: request record, hash chain; Lesson 6.
 
 ### Changed
 
 - `/v1/ask` and `PATCH …/acl` now write the audit trail: a request record at the start (HMAC + redacted text, never raw), then the outcome, sources, every guard decision, and per-step timings in one transaction; access changes are audited in their own transaction; if the audit can't be written, the request is refused (503) (ISS-051).
 - The answering graph times every step (`AnswerResult.timings`); `AUDIT_HMAC_KEY` added to `.env.example`.
 
-### Added
+### Fixed (from the independent test)
 
-- Audit trail storage (migration `0005`): `requests`, `request_sources`, and `audit_events` chained per tenant with SHA-256 (`app/audit/chain.py`, `app/audit/log.py`); append-only for every role (triggers on UPDATE, DELETE, TRUNCATE); `verify` names the first edited or missing event; auditor user `audrey@aldermoor.example.com` (ISS-050).
-- Phase 6 spec (`context/feature-specs/06-audit-observability.md`), ISS-050 … ISS-054; glossary: request record, hash chain.
+- The 16 KB body limit counts bytes as they arrive, so a chunked upload (no `Content-Length`) is refused with 413 too; a 3 MB chunked body used to be read whole (T-1).
+- A failed request (503) now records the decisions made before the failure (input guard, retrieval, context guard), its sources, the failed step and the timings, and writes its JSON log line with `status: "error"` and the error type (never its text) (T-2).
+- Refused (403) and not-found (404) audit reads are recorded as `audit_read` BLOCK events (T-4).
+- The context guard records PASS when it changed nothing, and every PASS verdict carries a reason, so "ran and allowed" is distinguishable from "did not run" (T-5).
 
 ## [0.5.1] — 2026-11-03 — Fixes from the independent test of v0.5.0
 

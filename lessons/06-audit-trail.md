@@ -59,9 +59,27 @@ status, user, time; `/verify` the chain. Another tenant's request is a 404. **Re
 
 Every graph step is timed, and each request writes **one JSON log line** (who, outcome, total time, time per step; never the
 question). The first such line exposed a **cold start**: the model wrote in 0.75 s, but loading the local classifier and
-reranker on the first request cost ~12 s. Loading them at start-up took the first request from **14.8 s to 3.8 s**.
+reranker on the first request cost ~12 s. Loading them at start-up took the first request from **14.8 s to 3.8 s** that day.
+The tester later saw no cold-start penalty at all (first request 6.0 s, second 6.3 s): the warm-up works, but the total is
+now dominated by the free-tier model (1–12 s per call). Re-measured after a fresh restart: first request 4.5 s, second
+3.3 s. An honest number names its conditions.
 
 Deferred: self-hosted Langfuse (ISS-054), about six services; the concepts (spans, timings, redaction) are covered.
+
+## What the independent tester found
+
+Verdict: release with known issues, no critical or high (`docs/test-reports/v0.6.0.md`). Fixed before release, each with a
+test that failed on the old code:
+
+- **Chunked uploads skipped the size limit** (T-1). The check read the declared `Content-Length`; a client can send
+  `Transfer-Encoding: chunked`, which declares no length. Fix: count bytes as they arrive and stop at 16 KB. Lesson: check
+  what is *received*, not what is *claimed*.
+- **Failures were the least explained requests** (T-2). A rate-limited request kept only START and ERROR. Fix: a failing step
+  attaches its progress to the error (decisions so far, sources, timings, which step failed), and the audit records it.
+- **"Who tried to look" was missing** (T-4): denied or not-found audit reads are now recorded too.
+- **Silence is ambiguous** (T-5): a guard that changed nothing now records PASS, so "ran and allowed" differs from "didn't run".
+
+Logged for later: NI numbers with an invalid prefix aren't masked (ISS-057); one HMAC key for all tenants (ISS-058).
 
 ## Explain it back (later)
 
@@ -70,3 +88,5 @@ Deferred: self-hosted Langfuse (ISS-054), about six services; the concepts (span
 3. Why refuse to answer when the audit can't be written?
 4. Why record auditors' reads?
 5. What did per-step timings reveal that the total time couldn't?
+6. Why is a body-size check on `Content-Length` alone not enough?
+7. Why should a *failed* request be recorded in more detail, not less?

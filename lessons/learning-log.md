@@ -649,4 +649,18 @@ loaded this log automatically, so the rule survived the new session.
 - **The first log line found a problem:** the model wrote the answer in 0.75 s, but the input guard took 5.9 s and search 6.1 s, because the local models were loading on the **first** request after a restart. Fix: load them at start-up (a "warm-up"). The first request went **14.8 s → 3.8 s**.
 - Lesson: you can't fix what you can't see. Per-step timings turned "it's slow" into "the cold start is slow".
 
-**Next session starts with:** the tester's check of Phase 6, then `v0.6.0`.
+**Update — the tester's check of Phase 6, and the fixes:**
+- Verdict: **release with known issues, no critical or high**. Everything Phase 6 promised held: auditor permissions, tenant isolation, redaction at rest, verify after 12 parallel requests (166 events, intact), the access-change audit.
+- What it found, and what we did:
+  - **Chunked uploads skipped the 16 KB limit** (a 3 MB body was read whole). Our check trusted the *declared* size (`Content-Length`); a chunked upload declares none. Now bytes are counted as they arrive. Lesson: check what is received, not what is claimed.
+  - **Failed requests were the least explained**: a rate-limited request kept only START and ERROR, and wrote no log line. Now the failing step hands over what was done so far (decisions, sources, timings, which step failed), and the audit and the log keep it.
+  - **Denied audit reads left no trace**: now recorded too ("who tried to look").
+  - **A guard that changed nothing left no event**: now it records PASS, so "ran" differs from "didn't run".
+- Each fix has a test that **fails on the old code** (we ran them against the old file to prove it: 422 instead of 413).
+- Corrected a claim: the cold-start fix (14.8 s → 3.8 s) was true that day, but the tester saw no cold penalty at all; the free-tier model now dominates. An honest number names its conditions.
+- Logged for later: invalid-prefix NI numbers aren't masked (ISS-057); one HMAC key for all tenants (ISS-058).
+- **Re-test:** the tester checked the four fixes on its own server, provoking a real failure by pointing the model at a dead address: the audit showed input guard → retrieve → context guard → `ERROR` at `generate`, and the log line said so without the question. Verdict: **release**. Tagged **`v0.6.0`**.
+
+**Still unclear:** explain-back questions for Lessons 1b–6 (study chat).
+
+**Next session starts with:** Phase 7 — the full evaluation and a CI gate (a spec first), with the tester at the end.

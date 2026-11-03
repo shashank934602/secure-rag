@@ -427,6 +427,8 @@ Notes:
 - RLS policy on `chunks`, `documents`, `requests`, `audit_events`: `tenant_id = current_setting('app.tenant_id')::uuid`.
 - **Audit integrity**: `audit_events` is append-only — a trigger raises on UPDATE/DELETE, and each row stores `row_hash = sha256(prev_hash ‖ row contents)`. `GET /v1/audit/verify` recomputes the chain and reports the first broken link.
 - The request row is written **at the start** (`status=started`) and finalized at the end, so a crash mid-request still leaves a record.
+- A **failed** request records the decisions made before the failure, its sources, the failed step, and the timings, then `finish ERROR` (tester v0.6.0 T-2). Every guard records a verdict when it runs, PASS included.
+- **Reading the audit is audited** (`audit_read`), refused (403) and not-found (404) attempts included.
 
 Example audit rows for one request:
 
