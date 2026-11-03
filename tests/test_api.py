@@ -312,3 +312,27 @@ def test_a_503_tells_the_client_when_to_retry() -> None:
         response = client.post("/v1/ask", json={"question": "How much leave?"})
     assert response.status_code == 503
     assert response.headers["retry-after"] == "30"
+
+
+# --- structured request logs (Phase 6, ISS-053) ----------------------------------------------
+
+
+def test_each_request_writes_one_json_log_line_without_the_question(caplog) -> None:
+    import json
+    import logging
+
+    question = "How much leave do I get? My IBAN is GB82 WEST 1234 5698 7654 32."
+    with caplog.at_level(logging.INFO, logger="app.requests"), _client(NO_ANSWER) as client:
+        request_id = client.post("/v1/ask", json={"question": question}).json()["request_id"]
+
+    lines = [r.getMessage() for r in caplog.records if r.name == "app.requests"]
+    assert len(lines) == 1
+    entry = json.loads(lines[0])
+    assert entry["request_id"] == request_id
+    assert (entry["user_id"], entry["tenant_id"], entry["status"]) == (
+        "u-alice",
+        "t-aldermoor",
+        "no_answer",
+    )
+    assert isinstance(entry["latency_ms"], int) and "retrieve" in entry["timings_ms"]
+    assert "leave" not in lines[0] and "GB82" not in lines[0]  # Invariant 5

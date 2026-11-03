@@ -162,3 +162,18 @@ def test_a_broken_judge_fails_closed() -> None:
 def test_the_judge_is_not_asked_when_citations_are_already_invalid() -> None:
     a = _judged(["No citations here.", "Still none."], [])  # an empty script: any call would fail
     assert a.answer("How much leave?").status == "no_answer"
+
+
+def test_warm_up_loads_the_local_models_once_before_any_request() -> None:
+    class Loadable:
+        loads = 0
+
+        def load(self) -> None:
+            Loadable.loads += 1
+
+    from app.guards.injection import InputGuard
+
+    a = _answerer()
+    a.input_guard, a.reranker = InputGuard(Loadable()), Loadable()
+    a.warm_up()
+    assert Loadable.loads == 2  # the classifier and the reranker

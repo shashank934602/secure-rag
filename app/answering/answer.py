@@ -82,6 +82,14 @@ class Answerer:
         answer, citations = final["replies"][-1], final["citations"]
         return self._result("answered", answer, citations, final["retrieved"], verdicts, timings)
 
+    def warm_up(self) -> None:
+        """Load the local models before the first request (tester-style finding, 2026-11-03: the
+        first request after a restart spent ~12 s loading the classifier and reranker)."""
+        for component in (getattr(self.input_guard, "classifier", None), self.reranker):
+            load = getattr(component, "load", None)
+            if load is not None:
+                load()
+
     def retrieve(self, question: str, scope: AccessScope | None = None) -> list[ScoredChunk]:
         """The top_k chunks the LLM will see: searched directly, or reranked from candidates."""
         if self.reranker is None:

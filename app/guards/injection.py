@@ -59,11 +59,15 @@ class DebertaInjectionClassifier:
         self.model_name, self.window, self.overlap = model_name, window, overlap
         self._pipeline = None
 
-    def score(self, text: str) -> float:
+    def load(self) -> None:
+        """Load the model now (the API does this at start-up, so no user waits for it)."""
         if self._pipeline is None:
             from transformers import pipeline  # heavy import: only when used
 
             self._pipeline = pipeline("text-classification", model=self.model_name)
+
+    def score(self, text: str) -> float:
+        self.load()
         windows = self._windows(text)
         results = self._pipeline(windows, truncation=True, max_length=512)
         return max(r["score"] if r["label"] == "INJECTION" else 1 - r["score"] for r in results)

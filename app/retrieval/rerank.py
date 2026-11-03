@@ -26,13 +26,17 @@ class CrossEncoderReranker:
         self.model_name = model_name
         self._model = None  # loaded on first use, so building an answerer stays cheap
 
-    def rerank(self, question: str, candidates: list[ScoredChunk], k: int) -> list[ScoredChunk]:
-        if not candidates:
-            return []
+    def load(self) -> None:
+        """Load the model now (the API does this at start-up, so no user waits for it)."""
         if self._model is None:
             from sentence_transformers import CrossEncoder  # heavy import: only when used
 
             self._model = CrossEncoder(self.model_name)
+
+    def rerank(self, question: str, candidates: list[ScoredChunk], k: int) -> list[ScoredChunk]:
+        if not candidates:
+            return []
+        self.load()
         # One-label cross-encoders apply a sigmoid, so each score is a 0–1 relevance.
         scores = self._model.predict([(question, c.chunk.text) for c in candidates])
         ranked = sorted(zip(candidates, scores, strict=True), key=lambda p: p[1], reverse=True)

@@ -14,6 +14,7 @@ Handlers stay thin: validate input, call the answerer, shape the output.
 """
 
 import functools
+import json
 import logging
 import time
 import uuid
@@ -40,6 +41,9 @@ from app.domain import AnswerResult, User
 from app.guards.grounding import JUDGE_PROMPT_VERSION
 
 log = logging.getLogger(__name__)
+# One JSON line per request: who, outcome, time per step. Never the question or answer
+# (Invariant 5): those live, redacted, in the audit trail (spec 06 D8).
+request_log = logging.getLogger("app.requests")
 
 UNAVAILABLE = "The assistant is temporarily unavailable. Try again."
 RETRY_AFTER = {"Retry-After": "30"}  # a 503 is temporary (outage, provider rate limit)
@@ -135,11 +139,20 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.answerer = build()  # once at start-up, not per request
+        warm_up = getattr(app.state.answerer, "warm_up", None)
+        if warm_up is not None:
+            warm_up()  # load local models now, so the first user doesn't wait for them
         app.state.authenticate = authenticator()
         app.state.recorder = recorder()  # refuses to start without AUDIT_HMAC_KEY
         yield
 
-    app = FastAPI(title="Secure RAG Assistant", version="0.5.1", lifespan=lifespan)
+    if not request_log.handlers:  # show the request lines in the server output
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        request_log.addHandler(handler)
+        request_log.setLevel(logging.INFO)
+
+    app = FastAPI(title="Secure RAG Assistant", version="0.6.0", lifespan=lifespan)
 
     @app.middleware("http")
     async def limit_body_size(request: Request, call_next):
@@ -189,6 +202,18 @@ def create_app(
                 "audit finish failed request_id=%s error=%s", request_id, type(error).__name__
             )
             return _unavailable()  # an answer that can't be explained isn't given (D6)
+        request_log.info(
+            json.dumps(
+                {
+                    "request_id": request_id,
+                    "user_id": user.id,
+                    "tenant_id": user.tenant_id,
+                    "status": result.status,
+                    "latency_ms": _ms(started),
+                    "timings_ms": result.timings,
+                }
+            )
+        )
         return _response(result, request_id)
 
     @app.patch("/v1/documents/{doc_id}/acl", responses=_error_docs(401, 403, 404, 413, 503))
