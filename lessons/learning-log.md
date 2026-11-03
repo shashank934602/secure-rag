@@ -644,4 +644,9 @@ loaded this log automatically, so the rule survived the new session.
 - **Reading the audit is audited** (who looked at what), in the same transaction as the read. `/verify` counted 17 events, including Audrey's own reads.
 - Row-level security again: Aldermoor's auditor gets 404 for a Northgate request. Alice (no `auditor`) gets 403.
 
-**Next session starts with:** S4, structured logs, the tester's check of Phase 6, then `v0.6.0`.
+**Update — Phase 6 S4: structured logs, and a cold-start fix (ISS-053):**
+- Each request writes **one JSON log line** (who, outcome, total time, time per step), never the question. This is the core of what tracing tools do, without their extra services.
+- **The first log line found a problem:** the model wrote the answer in 0.75 s, but the input guard took 5.9 s and search 6.1 s, because the local models were loading on the **first** request after a restart. Fix: load them at start-up (a "warm-up"). The first request went **14.8 s → 3.8 s**.
+- Lesson: you can't fix what you can't see. Per-step timings turned "it's slow" into "the cold start is slow".
+
+**Next session starts with:** the tester's check of Phase 6, then `v0.6.0`.

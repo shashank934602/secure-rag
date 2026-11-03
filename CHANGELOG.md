@@ -15,6 +15,8 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ### Added
 
+- One structured JSON log line per request (`app.requests`: request id, user, tenant, status, latency, per-step timings; never the question) (ISS-053).
+- The API loads the local models (injection classifier, reranker) at start-up: the first request after a restart went from 14.8 s to 3.8 s (ISS-029, ISS-053).
 - Auditor endpoints (`auditor` permission): `GET /v1/audit/requests/{id}` (the request, its sources, and every decision in order), `GET /v1/audit/requests` (search by status, user, time), `GET /v1/audit/verify` (recompute the hash chain); tenant-scoped; every read is itself audited (ISS-052).
 
 ### Changed
