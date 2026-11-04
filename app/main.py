@@ -7,6 +7,7 @@
     PATCH /v1/documents/{doc_id}/acl  {"allowed_roles": [...]} → who may read it (needs `uploader`)
     GET  /v1/audit/requests/{id}, /v1/audit/requests?…, /v1/audit/verify  (needs `auditor`)
     GET  /healthz   {"status": "ok"} when the database answers (no token)
+    GET  /          a small demo page: paste a token, ask, see the answer and its sources
 
 Tokens: `python -m app.auth token --tenant Aldermoor --email alice@aldermoor.example.com`.
 Still bound to 127.0.0.1 until rate limiting exists (ISS-040).
@@ -21,14 +22,16 @@ import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path as FilePath
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, Field, StringConstraints
+from starlette.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.answering.answer import Answerer, build_db_answerer
@@ -50,6 +53,15 @@ UNAVAILABLE = "The assistant is temporarily unavailable. Try again."
 RETRY_AFTER = {"Retry-After": "30"}  # a 503 is temporary (outage, provider rate limit)
 MAX_BODY_BYTES = 16_384  # a 1,000-character question fits many times over (tester T-3)
 TOO_LARGE = "Request body too large"
+STATIC = FilePath(__file__).resolve().parent / "static"
+# The demo page loads only its own files and talks only to this API (spec 08 D5). Not applied to
+# /docs, whose Swagger UI loads from a CDN.
+PAGE_HEADERS = {
+    "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; "
+    "form-action 'self'",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+}
 
 
 class BodyLimit:
@@ -190,6 +202,18 @@ def create_app(
     app = FastAPI(title="Secure RAG Assistant", version="0.6.0", lifespan=lifespan)
 
     app.add_middleware(BodyLimit)
+    app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+    @app.middleware("http")
+    async def page_headers(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            response.headers.update(PAGE_HEADERS)
+        return response
+
+    @app.get("/", include_in_schema=False)
+    def page() -> FileResponse:
+        return FileResponse(STATIC / "index.html")
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, error: RequestValidationError) -> JSONResponse:

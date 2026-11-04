@@ -13,6 +13,19 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- Phase 8 spec (`context/feature-specs/08-ship-it.md`), ISS-065 … ISS-069.
+- One command for the whole demo: `docker compose up` runs `db` → `migrate` (Alembic) → `seed` (both companies' demo documents, idempotent; prints four demo tokens) → `api` on 127.0.0.1:8000. One image (`Dockerfile`: Python 3.12 slim, `uv sync --locked`, CPU PyTorch, non-root, no secrets baked in); local models cached in the `hf-cache` volume; `API_PORT`/`DB_PORT` overrides (ISS-065).
+- `scripts/make_env.py`: creates or completes `.env`, generating every local secret and never printing one or overwriting a value; `RAG_APP_PASSWORD` in `.env.example` (ISS-065).
+- `scripts/seed_demo.py` and `app.auth.token_for` (the token CLI now uses it) (ISS-065).
+- A demo web page at `/` (paste a token, ask, see status, answer, sources, request id): answers inserted as text only, strict Content-Security-Policy on the page and its files (not on `/docs`), token kept in `sessionStorage` (ISS-066, partly ISS-056).
+- `README.md` (problem, architecture diagram, results table with intervals and misses, quick start, development, limitations), `docs/demo-script.md` for the demo video (ISS-067, ISS-069).
+
+### Changed
+
+- `docker compose up` now starts the whole stack; `docker compose up -d db` starts only the database for development (AGENTS.md, `docs/code-structure.md` folder map updated).
+
 ## [0.7.0] — 2026-11-03 — Phase 7: full evaluation + CI gate
 
 Phase 7 "done when" passes: a change that weakens a guard is blocked automatically. A demo branch raised the injection

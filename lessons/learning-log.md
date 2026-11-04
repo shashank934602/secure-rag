@@ -681,3 +681,19 @@ loaded this log automatically, so the rule survived the new session.
 **Still unclear:** explain-back questions for Lessons 1b–7 (study chat).
 
 **Next session starts with:** the owner's GitHub settings (ISS-063: secrets, required checks, code-owner review), then Phase 8 — ship it.
+
+## 2026-11-04 — Phase 8: ship it
+
+**Where we are:** Phase 7 released (`v0.7.0`, CI green). Phase 8 (the last phase of the plan) started: spec 08, ISS-065 … ISS-069. The GitHub settings (ISS-063) are still to do in the web UI.
+
+**What we learned / decided:**
+- **Which GitHub account:** every push uses `shashank934602` over SSH (the `github-shashank` shortcut and its own key; GitHub greets it by name). The `gh` tool on this machine is signed in to *other* accounts, so it is never used for this project. Saved as a standing rule.
+- **One command for a stranger:** `docker compose up` now runs four steps in order: the database, the migrations (as the admin, once), the demo data (both companies; safe to re-run), and the API. Compose waits for each step: "healthy" for the database, "completed successfully" for the one-shot steps.
+- **One image, no secrets inside:** the same image runs migrations, seeding, and the API; secrets come from `.env` at run time, the models download into a volume on first use (about 5 minutes once, then instant). It runs as a normal user, not root.
+- **`.env` without typing secrets:** `scripts/make_env.py` generates every local password and key, never prints one, never overwrites one. A newcomer pastes only the two API keys.
+- **A tiny web page with security built in:** answers are inserted as text, never HTML (a poisoned document can't inject a script), and a Content-Security-Policy tells the browser to load only this site's own files.
+- **Checked for real:** the five README demos behave as written: alice gets 25 days; alice gets "I don't know" for salary bands (HR-only, never searched for her); harriet gets Band C; ned gets *his* company's 28 days; "ignore your rules" is refused.
+
+**How we learned it:** built the image and stack, ran it from the same command a stranger would, asked the README's questions through the containers, and looked at the page.
+
+**What I can now explain:** pending (study chat).

@@ -1,21 +1,34 @@
-# Local Postgres + pgvector for development (spec 02 step 1).
+# The whole demo stack, or just the database for development (spec 08 D1, ISS-065).
 #
-#   docker compose up -d       start in the background
-#   docker compose ps          is it running and healthy?
-#   docker compose down        stop (the data is kept in the pgdata volume)
-#   docker compose down -v     stop and delete the data
+#   python3 scripts/make_env.py   once: creates .env (then paste GROQ_API_KEY and MISTRAL_API_KEY)
+#   docker compose up             database → migrations → demo data → API on http://127.0.0.1:8000
+#   docker compose up -d db       just the database (development: run the app with uv)
+#   docker compose down           stop (data kept in the volumes)
+#   docker compose down -v        stop and delete the data and the downloaded models
 #
-# Port 5433 on 127.0.0.1 only: 5432 is taken by a local Postgres, and nothing outside
-# this machine may connect. The password comes from .env, never from this file.
+# Everything listens on 127.0.0.1 only: there is no rate limiting yet (ISS-040). Change the
+# host ports with API_PORT / DB_PORT if 8000 or 5433 are taken.
+
+x-app: &app
+  build: .
+  image: secure-rag-assistant:local
+  env_file: .env
+  environment:
+    # Inside this network the database is db:5432 (the 127.0.0.1:5433 URLs in .env are for the host).
+    DATABASE_ADMIN_URL: postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (python3 scripts/make_env.py)}@db:5432/rag
+    DATABASE_URL: postgresql://rag_app:${RAG_APP_PASSWORD:?set RAG_APP_PASSWORD in .env (python3 scripts/make_env.py)}@db:5432/rag
+  volumes:
+    - hf-cache:/home/app/.cache/huggingface
+
 services:
   db:
-    image: pgvector/pgvector:0.8.7-pg16  # pinned: pgvector 0.8.7 on Postgres 16
+    image: pgvector/pgvector:0.8.7-pg16 # pinned: pgvector 0.8.7 on Postgres 16
     environment:
       POSTGRES_DB: rag
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (python3 scripts/make_env.py)}
     ports:
-      - "127.0.0.1:5433:5432"
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -24,5 +37,35 @@ services:
       timeout: 3s
       retries: 30
 
+  migrate: # one-shot: create or update the schema (runs as the admin; the app never does)
+    <<: *app
+    command: ["alembic", "-c", "db/alembic.ini", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  seed: # one-shot: load both companies' demo documents (safe to re-run), print demo tokens
+    <<: *app
+    command: ["python", "-m", "scripts.seed_demo"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    <<: *app
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  hf-cache:

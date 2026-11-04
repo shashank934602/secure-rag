@@ -7,7 +7,8 @@ which explains the ideas; this document explains the code.
 > **Viewing the diagrams:** GitHub renders them automatically. In VS Code, install the
 > *Markdown Preview Mermaid Support* extension, then open the preview with **Cmd+Shift+V**.
 
-Status: this describes **Phase 1** as built. Section 11 shows how the structure grows in later phases.
+Status: the folder map (§1) is current as of Phase 8. The detailed diagrams after it describe the Phase 1 core flow,
+which is still the heart of the system; `docs/architecture.md` has the full design.
 
 ---
 
@@ -17,33 +18,34 @@ Status: this describes **Phase 1** as built. Section 11 shows how the structure 
 secure-rag-assistant/
 │
 ├── app/                          ← the application
-│   ├── config.py                 settings: model names, chunk size, top-k; loads .env
-│   ├── domain.py                 shared data shapes: Page, Chunk, ScoredChunk, Citation, AnswerResult
-│   ├── cli.py                    command-line entry point
-│   │
-│   ├── ingestion/                ← files → chunks          (runs once at start-up)
-│   │   ├── loaders.py            read .md / .pdf files into Pages
-│   │   └── chunking.py           cut Pages into ~400-token Chunks
-│   │
-│   ├── retrieval/                ← question → best chunks
-│   │   ├── embeddings.py         create the embedding client ("text → numbers")
-│   │   └── search.py             ChunkIndex: store chunk vectors, find the top-k
-│   │
-│   ├── answering/                ← chunks + question → checked answer
-│   │   ├── answer.py             Answerer: the whole question flow; build_answerer wiring
-│   │   └── citations.py          find and check [doc_id:page] citations
-│   │
-│   └── prompts/
-│       └── answer_v1.md          the rules sent to the AI model (versioned)
+│   ├── main.py                   the web API (FastAPI): /v1/ask, ACL change, audit, health, the page at /
+│   ├── config.py                 settings and pinned models; loads .env
+│   ├── domain.py                 shared data shapes: Chunk, Citation, GuardVerdict, AnswerResult, User …
+│   ├── auth.py                   access tokens (JWT) → the user and their roles
+│   ├── db.py                     connections, pool, per-tenant scope (row-level security)
+│   ├── documents.py              changing who may read a document (ACL)
+│   ├── ingest.py                 load a folder into the database (idempotent, injection scan)
+│   ├── cli.py                    ask from the command line
+│   ├── ingestion/                files → pages → ~400-token chunks
+│   ├── retrieval/                embeddings, Postgres hybrid search, rank fusion, reranker
+│   ├── answering/                the LangGraph flow (graph.py), the answerer, citation checks
+│   ├── guards/                   input guard, context guard, personal-data detector, output checks, grounding judge
+│   ├── audit/                    hash chain, append-only log, recorder, auditor queries
+│   ├── prompts/                  versioned prompts for the answer model and the grounding judge
+│   └── static/                   the demo web page (HTML, script, styles)
 │
-├── data/sample/                  the 11 company documents (10 .md + 1 .pdf)
-├── eval/datasets/golden.jsonl    10 test questions with expected answers and sources
-├── scripts/                      build_sample_pdf.py + its Markdown source
-├── tests/                        33 offline tests + 2 live tests + fakes
+├── db/                           Alembic migrations 0001–0005 (schema, RLS, roles, audit trail)
+├── data/                         the fake demo documents: sample/ (Aldermoor) and tenants/<name>/
+├── eval/                         evaluation: security.py, run.py (quality), leakage.py, gate.py,
+│                                 judges.py, thresholds.yaml, datasets/, baselines/, prompts/
+├── scripts/                      make_env.py (.env setup), seed_demo.py (demo data + tokens), helpers
+├── tests/                        offline, database (-m db) and live (-m live) tests + fakes
 │
-├── docs/                         architecture, ADRs, these guides
+├── Dockerfile  docker-compose.yml  .github/workflows/ci.yml
+├── docs/                         architecture, ADRs, test reports, these guides
 ├── context/                      specs, progress tracker, issue tracker, standards
-├── AGENTS.md  plan.md  GLOSSARY.md  CHANGELOG.md
+├── lessons/                      one plain-language lesson per phase + the learning log
+├── README.md  AGENTS.md  plan.md  GLOSSARY.md  CHANGELOG.md
 └── pyproject.toml  uv.lock  .env.example
 ```
 

@@ -17,7 +17,7 @@ import jwt
 import psycopg
 from psycopg_pool import ConnectionPool
 
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.db import borrow, connect, tenant_scope
 from app.domain import User
 
@@ -82,19 +82,25 @@ def main(argv: list[str] | None = None) -> int:
     token.add_argument("--email", required=True)
     args = parser.parse_args(argv)
 
-    settings = get_settings()
-    with connect(settings.database_url, autocommit=True) as conn:
-        tenant = conn.execute("SELECT id FROM tenants WHERE name = %s", (args.tenant,)).fetchone()
-        if tenant is None:
-            print(f"Error: no tenant {args.tenant!r}", file=sys.stderr)
-            return 1
-        with tenant_scope(conn, tenant[0]):
-            user = conn.execute("SELECT id FROM users WHERE email = %s", (args.email,)).fetchone()
-    if user is None:
-        print(f"Error: no user {args.email!r} in {args.tenant!r}", file=sys.stderr)
+    try:
+        print(token_for(get_settings(), args.tenant, args.email))
+    except LookupError as error:
+        print(f"Error: {error}", file=sys.stderr)
         return 1
-    print(issue_token(user[0], tenant[0], secret=settings.jwt_secret, ttl_s=settings.token_ttl_s))
     return 0
+
+
+def token_for(settings: Settings, tenant_name: str, email: str) -> str:
+    """A dev token for a seeded user (CLI, demo seed); LookupError if there is no such user."""
+    with connect(settings.database_url, autocommit=True) as conn:
+        tenant = conn.execute("SELECT id FROM tenants WHERE name = %s", (tenant_name,)).fetchone()
+        if tenant is None:
+            raise LookupError(f"no tenant {tenant_name!r}")
+        with tenant_scope(conn, tenant[0]):
+            user = conn.execute("SELECT id FROM users WHERE email = %s", (email,)).fetchone()
+    if user is None:
+        raise LookupError(f"no user {email!r} in {tenant_name!r}")
+    return issue_token(user[0], tenant[0], secret=settings.jwt_secret, ttl_s=settings.token_ttl_s)
 
 
 if __name__ == "__main__":
