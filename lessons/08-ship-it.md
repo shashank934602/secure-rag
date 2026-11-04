@@ -10,7 +10,7 @@ command, and understand in ten minutes, without weakening any of the security th
 
 ```
 python3 scripts/make_env.py   →  .env with every local secret generated (you paste 2 API keys)
-docker compose up             →  db ──healthy──▶ migrate ──done──▶ seed ──done──▶ api  (127.0.0.1:8000)
+docker compose up -d --wait   →  db ──healthy──▶ migrate ──done──▶ seed ──done──▶ api  (127.0.0.1:8000)
                                   Postgres       schema + RLS     demo data +      web page at /
                                                  (as admin)       demo tokens      API at /v1/…
 ```

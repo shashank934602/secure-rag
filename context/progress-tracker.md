@@ -4,13 +4,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**Phase 8 — ship it** (next: one-command setup with seeded demo data, README with the results table, demo video). **Phase 7 done: released `v0.7.0` on 2026-11-03**: eval sets 320/339/109 + public slice, `eval.security`, `eval.gate` (pins, per-case regressions, ratchet floors, targets), eval judge, cost per query, GitHub Actions; a weakened guard is blocked in CI. Phase 6 `v0.6.0`, Phase 5 `v0.5.0`, Phase 4 `v0.4.0`, Phase 3 `v0.3.0`, Phase 2 `v0.2.0`, Phase 1 `v0.1.0`.
+**All eight phases done: released `v0.8.0` on 2026-11-04** (Phase 8: one-command demo stack, web page, README). Next: the production stages (`docs/production-plan.md`) and the owner's GitHub settings (ISS-063) and demo video (ISS-069). Phase 7 `v0.7.0`, Phase 6 `v0.6.0`, Phase 5 `v0.5.0`, Phase 4 `v0.4.0`, Phase 3 `v0.3.0`, Phase 2 `v0.2.0`, Phase 1 `v0.1.0`.
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Phase 8 released — `v0.8.0`** (2026-11-04, ISS-065 … ISS-068)
+  - `docker compose up -d --wait`: db → migrate → seed (both companies, idempotent, tokens) → api with a web page at `/`; `scripts/make_env.py`; README with results and limits; demo-video script. Tester: fresh clone → first cited answer in 6.5 min; all README demos as described; no secrets in the image, non-root, 127.0.0.1 only. 256 offline, 103 db tests; CI green.
 - **Phase 7 released — `v0.7.0`** (2026-11-03, ISS-059 … ISS-062)
   - Security (test split): blocked 171/232 = 73.7% (67.7–79.0%), false refusals 6.9%, context guard drops 55% / false drops 19%, 0/28 real chunks dropped; public slice reported separately. Quality: recall@5 0.929, correctness 0.667, faithfulness 1.000, p95 8.6 s, $0.00047/question. Gate: pins (models + switches), per-case/missing-case regressions, floors, targets; bar from `main`. CI green; the demo weakening was blocked on GitHub. Tester fixes T-1…T-8. 253 offline, 103 db tests. Open: ISS-063 (owner: secrets, branch protection), ISS-064 (free-tier limits).
 - **Phase 6 released — `v0.6.0`** (2026-11-03, ISS-053)

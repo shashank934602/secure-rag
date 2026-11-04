@@ -39,7 +39,10 @@ def main() -> int:
         if ingest.main(args) != 0:
             return 1
     settings = get_settings()
-    print("\nDemo ready. Open the web page, paste a token, ask a question.")
+    print("\nDemo data ready. The API starts next: the first start downloads ~2 GB of models.")
+    print(
+        "`docker compose up -d --wait` returns when it's up; then open the page and paste a token."
+    )
     print(f"Tokens (valid {settings.token_ttl_s // 60} minutes):")
     for tenant, email, role in DEMO_USERS:
         print(f"\n  {email}  ({role})\n  {token_for(settings, tenant, email)}")

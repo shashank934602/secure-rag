@@ -20,11 +20,13 @@ You need Docker and two free API keys: [Groq](https://console.groq.com/keys) (th
 git clone https://github.com/shashank934602/secure-rag.git && cd secure-rag
 python3 scripts/make_env.py      # creates .env with every local secret generated
 # open .env and paste GROQ_API_KEY and MISTRAL_API_KEY
-docker compose up                # database → migrations → demo data → API
+docker compose up -d --wait      # database → migrations → demo data → API; returns when it's ready
+docker compose logs seed         # the four demo tokens
 ```
 
-The first start builds the image and downloads two local models (about 2 GB, once). When the `seed` step prints
-**Demo ready** and four tokens, open **http://127.0.0.1:8000**, paste a token, and ask:
+The first run builds the image and downloads two local models (about 2 GB, once), so `--wait` takes several minutes;
+later starts take seconds. Then open **http://127.0.0.1:8000**, paste a token, and ask. If port 8000 or 5433 is already
+taken, choose others: `API_PORT=8001 DB_PORT=5434 docker compose up -d --wait` (and open port 8001).
 
 | Try this as… | Question | What should happen |
 |---|---|---|

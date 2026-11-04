@@ -697,3 +697,14 @@ loaded this log automatically, so the rule survived the new session.
 **How we learned it:** built the image and stack, ran it from the same command a stranger would, asked the README's questions through the containers, and looked at the page.
 
 **What I can now explain:** pending (study chat).
+
+**Update — the stranger test, and `v0.8.0`:**
+- The tester cloned the repo, followed only the README, and got a cited answer **6.5 minutes** after `git clone` (the plan's limit was 10).
+- It found a real trap: the README said "open the page when the seed finishes", but the API needed 3 more minutes, so a newcomer would see "connection refused". Fix: `docker compose up -d --wait` returns only when the API is healthy. Lesson: **instructions are code too; test them as a stranger would.**
+- A browser test fed the page a hostile answer (`<img onerror=…>`, `<script>`): it appeared as text and nothing ran.
+- **All eight phases of the plan are done.** What's left is production (rate limiting, key management, hosting) and the owner's GitHub settings and demo video.
+
+**Still unclear:** explain-back questions for Lessons 1b–8 (study chat).
+
+**Next session starts with:** the owner's GitHub settings (ISS-063: secrets, required checks, code-owner review), recording the demo video (ISS-069), then choosing the first production stage.
+

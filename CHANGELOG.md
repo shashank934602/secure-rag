@@ -13,6 +13,15 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-11-04 — Phase 8: ship it
+
+Phase 8 "done when" passes: the independent tester cloned the repository, followed only the README, and had an answered
+question with citations **6.5 minutes** after `git clone` (including the 1.8 GB model download; the image layers were
+cached). All five README demos behaved as described (8 questions, no errors); the image holds no secrets and runs as a
+normal user; ports bind to 127.0.0.1 only; every README number matches the baselines. The tester's verdict
+(`docs/test-reports/v0.8.0.md`): release with known issues, no critical or high; fixed below or logged (ISS-070). This
+completes the plan's eight phases; production is the next stage (`docs/production-plan.md`).
+
 ### Added
 
 - Phase 8 spec (`context/feature-specs/08-ship-it.md`), ISS-065 … ISS-069.
@@ -21,6 +30,12 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - `scripts/seed_demo.py` and `app.auth.token_for` (the token CLI now uses it) (ISS-065).
 - A demo web page at `/` (paste a token, ask, see status, answer, sources, request id): answers inserted as text only, strict Content-Security-Policy on the page and its files (not on `/docs`), token kept in `sessionStorage` (ISS-066, partly ISS-056).
 - `README.md` (problem, architecture diagram, results table with intervals and misses, quick start, development, limitations), `docs/demo-script.md` for the demo video (ISS-067, ISS-069).
+
+### Fixed (from the independent test)
+
+- The README told newcomers to open the page when the seed finished, but the API needed ~3 more minutes: the quick start is now `docker compose up -d --wait` (returns when the API is healthy), then `docker compose logs seed` for tokens, and the seed message says the API starts next (T-1).
+- The README now explains `API_PORT`/`DB_PORT` for busy ports, and says the first run takes several minutes (T-2, T-3).
+- The page's answer view was checked in a real browser with a hostile answer (`<img onerror>`, `<script>`, `<svg onload>` in the answer, source, and id): all shown as text, nothing ran (T-4).
 
 ### Changed
 
