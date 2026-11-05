@@ -63,8 +63,10 @@ class Settings(BaseSettings):
     roles: list[str] = ["employee"]  # CLI and eval scope; the API uses the logged-in user's roles
 
     # Access tokens (spec 04 D5): HS256-signed JWTs; the secret lives only in .env.
-    jwt_secret: str = ""
-    token_ttl_s: int = 3600
+    jwt_private_key: str = ""  # base64 of the PEM; only where tokens are issued
+    jwt_public_key: str = ""  # base64 of the PEM; checks tokens
+    jwt_previous_public_key: str = ""  # during a key rotation: tokens signed with it still pass
+    token_ttl_s: int = 900  # 15 minutes (spec 09 D5)
 
     # Audit trail (spec 06 D4): key for the HMAC of each question; the raw text is never stored.
     audit_hmac_key: str = ""

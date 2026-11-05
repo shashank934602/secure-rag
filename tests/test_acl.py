@@ -21,10 +21,10 @@ from app.main import create_app
 from app.retrieval.pg_search import PgRetriever
 from tests.conftest import PgUrls, act_as
 from tests.fakes import KeywordEmbeddings
+from tests.keys import KEYS
 
 pytestmark = pytest.mark.db
 
-SECRET = "test-secret-0123456789abcdef0123456789abcdef"
 EMBEDDINGS = KeywordEmbeddings(["leave", "pay"], dimensions=1024)
 
 
@@ -34,7 +34,7 @@ def _user(pg: PgUrls, email: str) -> User:
             "SELECT id, tenant_id FROM users WHERE email = %s", (email,)
         ).fetchone()
     with connect(pg.app, autocommit=True) as conn:
-        return authenticate(issue_token(user_id, tenant_id, secret=SECRET), secret=SECRET, db=conn)
+        return authenticate(issue_token(user_id, tenant_id, keys=KEYS), keys=KEYS, db=conn)
 
 
 @pytest.fixture
@@ -135,7 +135,7 @@ def _client(pg: PgUrls, conn: psycopg.Connection) -> TestClient:
     app = create_app(
         build=lambda: None,
         health_check=lambda: None,
-        authenticator=lambda: lambda token: authenticate(token, secret=SECRET, db=conn),
+        authenticator=lambda: lambda token: authenticate(token, keys=KEYS, db=conn),
         database=lambda: conn,
         recorder=lambda: AuditRecorder(conn, "test-audit-key"),
     )
@@ -144,7 +144,7 @@ def _client(pg: PgUrls, conn: psycopg.Connection) -> TestClient:
 
 def _bearer(pg: PgUrls, email: str) -> dict[str, str]:
     user = _user(pg, email)
-    return {"Authorization": f"Bearer {issue_token(user.id, user.tenant_id, secret=SECRET)}"}
+    return {"Authorization": f"Bearer {issue_token(user.id, user.tenant_id, keys=KEYS)}"}
 
 
 def test_patch_acl_endpoint(pg, conn) -> None:

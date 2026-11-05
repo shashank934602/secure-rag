@@ -20,6 +20,8 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 - **Rate limits and a daily token budget** (`app/limits.py`): per user (20/min) and per tenant (120/min) on every authenticated route, and 200,000 model tokens per tenant per UTC day on `/v1/ask`, checked before any model call; over → 429 with `Retry-After`; counted in Redis (new `redis` service, `REDIS_URL`), in memory without it; if Redis is unreachable the request is refused (503). Live: request 21 of a minute got 429; with Redis stopped, 503 (ISS-072, closes ISS-040).
 
+- **RS256 access tokens, 15 minutes** (`app/auth.py`): signed with a private key, checked with the public key; the algorithm is pinned (HS256, `none`, and the HS256-with-the-public-key "algorithm confusion" trick are refused); each token names its key (`kid`) and `JWT_PREVIOUS_PUBLIC_KEY` keeps older tokens valid during a rotation. `make_env.py` generates the key pair with `openssl` (base64 PEM in `.env`); `JWT_SECRET` is no longer used. Live: an old HS256 token is now 401 (ISS-073, closes ISS-047).
+
 ### Security
 
 - Upgraded `pypdf` 6.20.0 → 6.21.4 (16 advisories; it parses uploaded PDFs), `filelock` 4.2.0 → 4.2.9 (17), `certifi` → 2026.10.23 (1); pip-audit now reports no known vulnerabilities (ISS-071).

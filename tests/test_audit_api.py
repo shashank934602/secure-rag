@@ -15,9 +15,9 @@ from app.db import connect
 from app.domain import AnswerResult, Chunk, Citation, GuardVerdict, ScoredChunk, User
 from app.main import create_app
 from tests.conftest import PgUrls
+from tests.keys import KEYS
 
 pytestmark = pytest.mark.db
-SECRET = "test-secret-0123456789abcdef0123456789abcdef"
 KEY = "test-audit-key"
 
 
@@ -30,7 +30,7 @@ def _user(pg: PgUrls, email: str) -> User:
 
 
 def _bearer(user: User) -> dict[str, str]:
-    return {"Authorization": f"Bearer {issue_token(user.id, user.tenant_id, secret=SECRET)}"}
+    return {"Authorization": f"Bearer {issue_token(user.id, user.tenant_id, keys=KEYS)}"}
 
 
 def _record(conn, user: User, status: str = "answered") -> str:
@@ -55,7 +55,7 @@ def app_client(pg: PgUrls):
     app = create_app(
         build=lambda: None,
         health_check=lambda: None,
-        authenticator=lambda: lambda token: authenticate(token, secret=SECRET, db=conn),
+        authenticator=lambda: lambda token: authenticate(token, keys=KEYS, db=conn),
         database=lambda: conn,
         recorder=lambda: AuditRecorder(conn, KEY),
     )

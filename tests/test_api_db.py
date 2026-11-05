@@ -18,10 +18,10 @@ from app.ingest import ingest_folder
 from app.main import create_app
 from tests.conftest import PgUrls
 from tests.fakes import KeywordEmbeddings, ScriptedChatModel
+from tests.keys import KEYS
 
 pytestmark = pytest.mark.db
 
-SECRET = "test-secret-0123456789abcdef0123456789abcdef"
 EMBEDDINGS = KeywordEmbeddings(["leave", "hotel"], dimensions=1024)
 
 
@@ -30,7 +30,7 @@ def _token(pg: PgUrls, email: str) -> str:
         user_id, tenant_id = admin.execute(
             "SELECT id, tenant_id FROM users WHERE email = %s", (email,)
         ).fetchone()
-    return issue_token(str(user_id), str(tenant_id), secret=SECRET)
+    return issue_token(str(user_id), str(tenant_id), keys=KEYS)
 
 
 @pytest.fixture
@@ -62,7 +62,7 @@ def _client(pg: PgUrls, settings: Settings, model: ScriptedChatModel) -> TestCli
     app = create_app(
         build=lambda: build_db_answerer(settings, embeddings=EMBEDDINGS, chat_model=model),
         health_check=lambda: pool_conn.execute("SELECT 1"),
-        authenticator=lambda: lambda token: authenticate(token, secret=SECRET, db=pool_conn),
+        authenticator=lambda: lambda token: authenticate(token, keys=KEYS, db=pool_conn),
         recorder=lambda: AuditRecorder(pool_conn, "test-audit-key"),
     )
     return TestClient(app)
@@ -144,7 +144,7 @@ def test_if_the_audit_cannot_be_written_the_answer_is_withheld(pg: PgUrls, two_c
     app = create_app(
         build=lambda: build_db_answerer(two_companies, embeddings=EMBEDDINGS, chat_model=model),
         health_check=lambda: None,
-        authenticator=lambda: lambda token: authenticate(token, secret=SECRET, db=pool_conn),
+        authenticator=lambda: lambda token: authenticate(token, keys=KEYS, db=pool_conn),
         recorder=BrokenRecorder,
     )
     with TestClient(app) as client:

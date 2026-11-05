@@ -3,27 +3,38 @@
     python3 scripts/make_env.py          # then paste GROQ_API_KEY and MISTRAL_API_KEY into .env
 
 - Starts from `.env.example` when `.env` doesn't exist.
-- Generates every local secret that is empty: the two database passwords, JWT_SECRET,
-  AUDIT_HMAC_KEY; fills the database URLs from them.
+- Generates every local secret that is empty: the two database passwords, AUDIT_HMAC_KEY, and the
+  RS256 key pair that signs access tokens (JWT_PRIVATE_KEY / JWT_PUBLIC_KEY, base64 of each PEM,
+  made with `openssl`); fills the database URLs from them.
 - Never overwrites a value that is already set, and never prints a secret: only key names.
 - RAG_APP_PASSWORD is taken from an existing DATABASE_URL when there is one (older .env files),
   so the app keeps the password its database role already has.
 """
 
+import base64
 import os
 import secrets
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
-GENERATED = {
-    "POSTGRES_PASSWORD": 16,
-    "RAG_APP_PASSWORD": 16,
-    "JWT_SECRET": 32,
-    "AUDIT_HMAC_KEY": 32,
-}
+GENERATED = {"POSTGRES_PASSWORD": 16, "RAG_APP_PASSWORD": 16, "AUDIT_HMAC_KEY": 32}
 NEEDED_FROM_YOU = ("GROQ_API_KEY", "MISTRAL_API_KEY")
+
+
+def rsa_key_pair() -> tuple[str, str]:
+    """A new 3072-bit RSA key pair as base64 of each PEM (one line each, fits in .env)."""
+    private = subprocess.run(
+        ["openssl", "genpkey", "-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:3072"],
+        capture_output=True,
+        check=True,
+    ).stdout
+    public = subprocess.run(
+        ["openssl", "pkey", "-pubout"], input=private, capture_output=True, check=True
+    ).stdout
+    return base64.b64encode(private).decode(), base64.b64encode(public).decode()
 
 
 def parse(lines: list[str]) -> dict[str, str]:
@@ -39,7 +50,7 @@ def _placeholder(value: str) -> bool:
     return not value or "<" in value
 
 
-def complete(lines: list[str]) -> tuple[list[str], list[str]]:
+def complete(lines: list[str], make_keys=rsa_key_pair) -> tuple[list[str], list[str]]:
     """The completed lines, and the names of the keys that were filled in."""
     values, filled = parse(lines), []
 
@@ -55,6 +66,12 @@ def complete(lines: list[str]) -> tuple[list[str], list[str]]:
     for key, size in GENERATED.items():
         if _placeholder(values.get(key, "")):
             set_value(key, secrets.token_hex(size))
+    if _placeholder(values.get("JWT_PRIVATE_KEY", "")) or _placeholder(
+        values.get("JWT_PUBLIC_KEY", "")
+    ):  # a pair, so both are made together (spec 09 D5)
+        private, public = make_keys()
+        set_value("JWT_PRIVATE_KEY", private)
+        set_value("JWT_PUBLIC_KEY", public)
     if _placeholder(values.get("DATABASE_ADMIN_URL", "")):
         set_value(
             "DATABASE_ADMIN_URL",

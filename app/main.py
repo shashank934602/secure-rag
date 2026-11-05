@@ -37,7 +37,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from app.answering.answer import Answerer, build_db_answerer
 from app.audit.queries import AuditAccessError, get_request, list_requests, verify_tenant
 from app.audit.recorder import AuditRecorder
-from app.auth import AuthError, authenticate
+from app.auth import AuthError, TokenKeys, authenticate
 from app.config import get_settings
 from app.db import connect, make_pool
 from app.documents import AclError, change_acl
@@ -153,10 +153,9 @@ def _build_from_settings() -> Answerer:
 
 def _authenticator_from_settings() -> Callable[[str], User]:
     settings = get_settings()
-    if not settings.jwt_secret:
-        raise RuntimeError("JWT_SECRET is not set (see .env.example)")
+    keys = TokenKeys.from_settings(settings)  # refuses to start without JWT_PUBLIC_KEY
     pool = make_pool(settings.database_url, name="rag-auth")
-    return lambda token: authenticate(token, secret=settings.jwt_secret, db=pool)
+    return lambda token: authenticate(token, keys=keys, db=pool)
 
 
 def _recorder_from_settings() -> AuditRecorder:

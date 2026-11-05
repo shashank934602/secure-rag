@@ -3,7 +3,7 @@
     python -m scripts.seed_demo            # what the `seed` service runs; safe to re-run
 
 Ingest is idempotent (unchanged documents are skipped), so running this again changes nothing.
-The tokens are for the fake demo users and expire after TOKEN_TTL_S (default 60 minutes); get a
+The tokens are for the fake demo users and expire after TOKEN_TTL_S (default 15 minutes); get a
 new one with `docker compose run --rm api python -m app.auth token --tenant … --email …`.
 """
 
