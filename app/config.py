@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     # Audit trail (spec 06 D4): key for the HMAC of each question; the raw text is never stored.
     audit_hmac_key: str = ""
 
+    # Abuse and cost limits (spec 09 D2–D4). Without REDIS_URL the counters live in this process.
+    redis_url: str = ""
+    rate_limit_user_per_min: int = 20
+    rate_limit_tenant_per_min: int = 120
+    tenant_daily_token_budget: int = 200_000  # model tokens per tenant per UTC day
+
 
 @lru_cache
 def get_settings() -> Settings:

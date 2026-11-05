@@ -18,6 +18,8 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - Production hardening spec (`context/feature-specs/09-production-hardening.md`), ISS-071 … ISS-075 (ISS-075: the owner's decisions before Stage A).
 - CI job **Supply chain**: gitleaks over the whole git history with project rules (`.gitleaks.toml`: Groq keys, Mistral keys, committed `.env` files; the default rules missed a committed `gsk_…` key in testing), pip-audit on the locked dependencies, trivy on the built image (ISS-071). The full-history scan (111 commits) found no real secret; 6 deliberate test fakes are ignored by fingerprint (`.gitleaksignore`).
 
+- **Rate limits and a daily token budget** (`app/limits.py`): per user (20/min) and per tenant (120/min) on every authenticated route, and 200,000 model tokens per tenant per UTC day on `/v1/ask`, checked before any model call; over → 429 with `Retry-After`; counted in Redis (new `redis` service, `REDIS_URL`), in memory without it; if Redis is unreachable the request is refused (503). Live: request 21 of a minute got 429; with Redis stopped, 503 (ISS-072, closes ISS-040).
+
 ### Security
 
 - Upgraded `pypdf` 6.20.0 → 6.21.4 (16 advisories; it parses uploaded PDFs), `filelock` 4.2.0 → 4.2.9 (17), `certifi` → 2026.10.23 (1); pip-audit now reports no known vulnerabilities (ISS-071).

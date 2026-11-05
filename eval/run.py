@@ -34,6 +34,7 @@ from app.answering.answer import PROMPT_VERSION, Answerer, build_db_answerer
 from app.audit.recorder import NullRecorder
 from app.config import ROOT, Settings, get_settings
 from app.domain import AnswerResult, User
+from app.limits import NoLimits
 from app.main import create_app
 from eval.judges import CORRECTNESS, FAITHFULNESS, EvalJudge
 from eval.metrics import (
@@ -88,6 +89,7 @@ def evaluate(
     captured = CapturingRecorder()  # quality runs aren't user requests: nothing is stored
     app = create_app(
         recorder=lambda: captured,
+        limits=NoLimits,  # the eval measures answers, not the rate limits
         build=lambda: answerer,
         health_check=lambda: None,
         authenticator=lambda: lambda _: user,

@@ -210,6 +210,13 @@ A model named by an exact, dated id in `eval/thresholds.yaml`; the gate fails if
 
 ## Operations
 
+**Rate limit**:
+The most requests one user (or one tenant) may make in a one-minute window; beyond it the API answers 429 with `Retry-After`.
+_Avoid_: throttle (we refuse, we don't slow down)
+
+**Token budget**:
+The most model tokens a tenant may spend in a UTC day; once used up, its questions get 429 until midnight UTC, with no model call.
+
 **Migration**:
 A versioned, ordered SQL change to the database schema (`db/migrations/`), applied by Alembic; never edited after it has been applied.
 _Avoid_: schema update, DDL script

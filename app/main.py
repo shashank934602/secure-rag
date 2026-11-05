@@ -43,6 +43,7 @@ from app.db import connect, make_pool
 from app.documents import AclError, change_acl
 from app.domain import AnswerResult, User
 from app.guards.grounding import JUDGE_PROMPT_VERSION
+from app.limits import LimiterUnavailable, LimitExceeded, build_limits, total_tokens
 
 log = logging.getLogger(__name__)
 # One JSON line per request: who, outcome, time per step. Never the question or answer
@@ -108,6 +109,7 @@ def _error_docs(*codes: int) -> dict:
         403: "The user lacks the permission",
         404: "Not found in the user's tenant",
         413: "Request body too large",
+        429: "Rate limit or the organisation's daily token budget reached; see Retry-After",
         503: "Temporarily unavailable (a guard, model, or the database); retry later",
     }
     return {code: {"model": ErrorOut, "description": meaning[code]} for code in codes}
@@ -168,6 +170,10 @@ def _database_from_settings() -> ConnectionPool:
     return make_pool(get_settings().database_url, name="rag-api")
 
 
+def _limits_from_settings():
+    return build_limits(get_settings())
+
+
 def _check_database() -> None:
     with connect(get_settings().database_url) as conn:
         conn.execute("SELECT 1")
@@ -179,6 +185,7 @@ def create_app(
     authenticator: Callable[[], Callable[[str], User]] = _authenticator_from_settings,
     database: Callable[[], object] = _database_from_settings,
     recorder: Callable[[], object] = _recorder_from_settings,
+    limits: Callable[[], object] = _limits_from_settings,
 ) -> FastAPI:
     """Build the app. Tests pass fakes for each part; production uses the defaults."""
     get_database = functools.cache(database)  # opened on first use, not at start-up
@@ -191,6 +198,7 @@ def create_app(
             warm_up()  # load local models now, so the first user doesn't wait for them
         app.state.authenticate = authenticator()
         app.state.recorder = recorder()  # refuses to start without AUDIT_HMAC_KEY
+        app.state.limits = limits()  # Redis when REDIS_URL is set, else this process's memory
         yield
 
     if not request_log.handlers:  # show the request lines in the server output
@@ -223,13 +231,22 @@ def create_app(
         ]
         return JSONResponse(status_code=422, content={"detail": problems})
 
-    @app.post("/v1/ask", response_model=AskResponse, responses=_error_docs(401, 413, 503))
+    @app.post("/v1/ask", response_model=AskResponse, responses=_error_docs(401, 413, 429, 503))
     def ask(
-        body: AskRequest, request: Request, user: Annotated[User, Depends(current_user)]
+        body: AskRequest, request: Request, user: Annotated[User, Depends(allowed_user)]
     ) -> AskResponse | JSONResponse:
         request_id, started = str(uuid.uuid4()), time.perf_counter()
         answerer, audit = request.app.state.answerer, request.app.state.recorder
         line = functools.partial(_log_request, request_id, user, started)
+        limits = request.app.state.limits
+        try:  # before any model call: a tenant past today's budget costs nothing more (spec 09 D3)
+            limits.check_budget(user)
+        except LimitExceeded as error:
+            line("rate_limited", reason="token_budget")
+            return _too_many(error)
+        except LimiterUnavailable:
+            line("error", error="limiter")
+            return _unavailable()  # fail closed (spec 09 D4)
         try:  # recorded before anything runs, so even a crash leaves a trace (spec 06 D5)
             audit.start(request_id, user, body.question)
         except Exception as error:
@@ -262,14 +279,18 @@ def create_app(
             )
             line("error", result.timings, error="audit_finish")
             return _unavailable()  # an answer that can't be explained isn't given (D6)
+        try:  # count what this answer cost against the tenant's day (spec 09 D3)
+            limits.spend(user, total_tokens(result.usage))
+        except LimiterUnavailable:
+            log.error("token budget update failed request_id=%s", request_id)
         line(result.status, result.timings)
         return _response(result, request_id)
 
-    @app.patch("/v1/documents/{doc_id}/acl", responses=_error_docs(401, 403, 404, 413, 503))
+    @app.patch("/v1/documents/{doc_id}/acl", responses=_error_docs(401, 403, 404, 413, 429, 503))
     def update_acl(
         request: Request,
         body: AclChange,
-        user: Annotated[User, Depends(current_user)],
+        user: Annotated[User, Depends(allowed_user)],
         doc_id: Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9-]{0,199}$")],
     ) -> JSONResponse:
         audit = request.app.state.recorder
@@ -298,16 +319,16 @@ def create_app(
             log.error("audit read failed error=%s", type(error).__name__)
             return _unavailable()
 
-    @app.get("/v1/audit/requests/{request_id}", responses=_error_docs(401, 403, 404, 503))
+    @app.get("/v1/audit/requests/{request_id}", responses=_error_docs(401, 403, 404, 429, 503))
     def audit_request(
-        request_id: uuid.UUID, user: Annotated[User, Depends(current_user)]
+        request_id: uuid.UUID, user: Annotated[User, Depends(allowed_user)]
     ) -> JSONResponse:
         """One request with its sources and every decision, in order (needs `auditor`)."""
         return _audit_call(lambda: get_request(get_database(), user, str(request_id)))
 
-    @app.get("/v1/audit/requests", responses=_error_docs(401, 403, 503))
+    @app.get("/v1/audit/requests", responses=_error_docs(401, 403, 429, 503))
     def audit_search(
-        user: Annotated[User, Depends(current_user)],
+        user: Annotated[User, Depends(allowed_user)],
         status: Literal["started", "answered", "no_answer", "refused", "error"] | None = None,
         user_id: uuid.UUID | None = None,
         since: datetime | None = None,
@@ -328,8 +349,8 @@ def create_app(
 
         return _audit_call(search)
 
-    @app.get("/v1/audit/verify", responses=_error_docs(401, 403, 503))
-    def audit_verify(user: Annotated[User, Depends(current_user)]) -> JSONResponse:
+    @app.get("/v1/audit/verify", responses=_error_docs(401, 403, 429, 503))
+    def audit_verify(user: Annotated[User, Depends(allowed_user)]) -> JSONResponse:
         """Recompute this tenant's hash chain; names the first edited or missing event."""
         return _audit_call(lambda: verify_tenant(get_database(), user))
 
@@ -368,6 +389,28 @@ def current_user(
     except Exception as error:  # e.g. the database is down: refuse, but don't blame the token
         log.error("auth failed error=%s", type(error).__name__)
         raise HTTPException(status_code=503, detail=UNAVAILABLE, headers=RETRY_AFTER) from None
+
+
+def allowed_user(request: Request, user: Annotated[User, Depends(current_user)]) -> User:
+    """The authenticated user, within their rate limits (spec 09 D2): 429 when over, 503 when the
+    limiter itself can't be reached (fail closed, D4). Logged, not audited (D7)."""
+    try:
+        request.app.state.limits.check_rate(user)
+    except LimitExceeded as error:
+        entry = {"user_id": user.id, "tenant_id": user.tenant_id, "status": "rate_limited",
+                 "path": request.url.path}  # fmt: skip
+        request_log.info(json.dumps(entry))
+        retry = {"Retry-After": str(error.retry_after_s)}
+        raise HTTPException(status_code=429, detail=error.detail, headers=retry) from None
+    except LimiterUnavailable:
+        log.error("rate limiter unavailable")
+        raise HTTPException(status_code=503, detail=UNAVAILABLE, headers=RETRY_AFTER) from None
+    return user
+
+
+def _too_many(error: LimitExceeded) -> JSONResponse:
+    return JSONResponse(status_code=429, content={"detail": error.detail},
+                        headers={"Retry-After": str(error.retry_after_s)})  # fmt: skip
 
 
 def _unauthorized() -> HTTPException:

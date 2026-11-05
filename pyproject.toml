@@ -23,6 +23,7 @@ dependencies = [
     "pypdf>=6.21.4",  # 6.20 had 16 advisories (ISS-071)
     "python-dotenv>=1.2.4",
     "pyyaml>=6.0.3",
+    "redis>=5",
     "sentence-transformers>=6.2.0",
     "torch>=2.15.0",
     "uvicorn>=0.54.0",
