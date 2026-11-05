@@ -123,4 +123,6 @@ def test_keys_load_from_settings_as_base64_pem() -> None:
     keys = TokenKeys.from_settings(settings)
     assert verify_token(issue_token(USER, TENANT, keys=keys), keys=KEYS).tenant_id == TENANT
     with pytest.raises(ValueError):
-        TokenKeys.from_settings(Settings(_env_file=None))
+        TokenKeys.from_settings(
+            Settings(_env_file=None, jwt_public_key="")
+        )  # not this machine's .env
