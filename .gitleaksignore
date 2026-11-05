@@ -1,0 +1,9 @@
+# Known false positives: deliberate fake secrets in tests (placeholder JWT secrets, and the fake keys
+# that prove output redaction works). Ignored by fingerprint, so a NEW secret in the same files is
+# still caught. Full-history scan 2026-11-05: 111 commits, these 6 findings, no real secret (ISS-071).
+95d7ce411b072cb98369ecbefb0a565d9faa0d5b:tests/test_audit_api.py:generic-api-key:20
+5246b554601c028d218e78c1f7c7d063984befad:tests/test_output_checks.py:private-key:49
+d3b0a45f4e22ace7a9b1fe6e7866d2632c68b5d9:tests/test_acl.py:generic-api-key:26
+576d18775ac502f9981cda1e01489bc1b12d8de2:tests/test_api_db.py:generic-api-key:23
+576d18775ac502f9981cda1e01489bc1b12d8de2:tests/test_auth.py:generic-api-key:11
+576d18775ac502f9981cda1e01489bc1b12d8de2:tests/test_auth_db.py:generic-api-key:14

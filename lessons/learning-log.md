@@ -708,3 +708,11 @@ loaded this log automatically, so the rule survived the new session.
 
 **Next session starts with:** the owner's GitHub settings (ISS-063: secrets, required checks, code-owner review), recording the demo video (ISS-069), then choosing the first production stage.
 
+
+## 2026-11-05 — Production begins: hardening (spec 09)
+
+**Where we are:** all eight phases released (`v0.8.0`). The production plan has six stages; Stage A (server, domain, HTTPS) needs the owner's decisions and a hosting budget (ISS-075), so we start with **Stage B: securing what we already have**, which works on one machine. Spec 09, ISS-071 … ISS-074.
+
+**What we decided:**
+- Four slices: secret and vulnerability scanning in CI; rate limits and a daily token budget; stronger, shorter-lived tokens; per-company question fingerprints.
+- **The limiter fails closed**: if the counter store (Redis) is down, requests are refused, never served without limits, the same rule every guard follows.

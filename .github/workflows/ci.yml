@@ -4,6 +4,9 @@
 #   db             database tests in a throwaway Postgres: RLS, the ACL-change check, the audit trail
 #   security-gate  input + context guard over the eval sets (local models, no keys): fails on a
 #                  per-case regression, a floor or ceiling, or a model that differs from its pin
+#   supply-chain   secrets in the whole git history (gitleaks + .gitleaks.toml), known
+#                  vulnerabilities in the locked dependencies (pip-audit), and in the built image
+#                  (trivy: high/critical with a fix fails) (ISS-071)
 #   quality-gate   golden set + leakage with the real models, on `main` and on pull requests; needs
 #                  the GROQ_API_KEY and MISTRAL_API_KEY repository secrets, otherwise it reports
 #                  "skipped" (a skipped job still shows green: read its summary)
@@ -58,6 +61,34 @@ jobs:
           enable-cache: true
       - run: uv sync --locked
       - run: uv run pytest -m db -q
+
+  supply-chain:
+    name: Supply chain (secrets, dependencies, image)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # every commit is scanned for secrets, not just the latest
+      - name: Secrets in the git history (gitleaks)
+        run: >-
+          docker run --rm -v "$PWD":/repo:ro -w /repo ghcr.io/gitleaks/gitleaks:v8.21.2
+          git /repo --redact --no-banner --config /repo/.gitleaks.toml
+          --gitleaks-ignore-path /repo/.gitleaksignore
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+      - name: Known vulnerabilities in the locked dependencies (pip-audit)
+        run: |
+          uv export --locked --no-dev --no-hashes --no-emit-project --format requirements-txt -q > requirements.txt
+          uvx pip-audit@2.9.0 -r requirements.txt --no-deps --disable-pip --progress-spinner off
+      - name: Build the image
+        run: docker build -t secure-rag-assistant:ci .
+      - name: Known vulnerabilities in the image (trivy)
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.58.1
+          image --quiet --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1
+          secure-rag-assistant:ci
 
   security-gate:
     name: Security gate

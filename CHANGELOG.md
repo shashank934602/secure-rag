@@ -13,6 +13,16 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+### Added
+
+- Production hardening spec (`context/feature-specs/09-production-hardening.md`), ISS-071 … ISS-075 (ISS-075: the owner's decisions before Stage A).
+- CI job **Supply chain**: gitleaks over the whole git history with project rules (`.gitleaks.toml`: Groq keys, Mistral keys, committed `.env` files; the default rules missed a committed `gsk_…` key in testing), pip-audit on the locked dependencies, trivy on the built image (ISS-071). The full-history scan (111 commits) found no real secret; 6 deliberate test fakes are ignored by fingerprint (`.gitleaksignore`).
+
+### Security
+
+- Upgraded `pypdf` 6.20.0 → 6.21.4 (16 advisories; it parses uploaded PDFs), `filelock` 4.2.0 → 4.2.9 (17), `certifi` → 2026.10.23 (1); pip-audit now reports no known vulnerabilities (ISS-071).
+- The image installs Debian security updates at build time: trivy found 2 high issues in `apt` (fixed upstream) in the base image; now 0 high, 0 critical (ISS-071).
+
 ## [0.8.0] — 2026-11-04 — Phase 8: ship it
 
 Phase 8 "done when" passes: the independent tester cloned the repository, followed only the README, and had an answered

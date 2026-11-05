@@ -5,3 +5,6 @@
 /.github/ @shashank934602
 /app/guards/ @shashank934602
 /app/config.py @shashank934602
+/.gitleaks.toml @shashank934602
+/.gitleaksignore @shashank934602
+/Dockerfile @shashank934602

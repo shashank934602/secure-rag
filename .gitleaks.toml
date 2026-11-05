@@ -1,0 +1,25 @@
+# Secret scanning rules (ISS-071): gitleaks' defaults plus the providers this project uses.
+# The defaults have no Groq rule, and their generic rule needs a word like "key" or "secret"
+# nearby, so `GROQ = "gsk_…"` slipped through in testing (2026-11-05).
+[extend]
+useDefault = true
+
+[[rules]]
+id = "groq-api-key"
+description = "Groq API key"
+regex = '''\bgsk_[A-Za-z0-9]{52}\b'''
+keywords = ["gsk_"]
+
+[[rules]]
+id = "mistral-api-key"
+description = "Mistral API key (32 characters next to the word mistral)"
+regex = '''(?i)mistral[\w.-]{0,25}\s*[:=]\s*['"]?([A-Za-z0-9]{32})\b'''
+secretGroup = 1
+keywords = ["mistral"]
+
+[[rules]]
+id = "dotenv-file"
+description = "A committed .env file (only .env.example belongs in git)"
+path = '''(^|/)\.env(\.[\w-]+)?$'''
+[rules.allowlist]
+paths = ['''(^|/)\.env\.example$''']

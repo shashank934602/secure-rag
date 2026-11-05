@@ -4,6 +4,9 @@
 # classifier, reranker) download on first use into the `hf-cache` volume, not into the image.
 FROM python:3.12-slim
 
+# Debian security fixes released since the base image was published (trivy, ISS-071).
+RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/*
+
 COPY --from=ghcr.io/astral-sh/uv:0.12.6 /uv /bin/uv
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
