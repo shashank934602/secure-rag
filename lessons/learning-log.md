@@ -716,3 +716,11 @@ loaded this log automatically, so the rule survived the new session.
 **What we decided:**
 - Four slices: secret and vulnerability scanning in CI; rate limits and a daily token budget; stronger, shorter-lived tokens; per-company question fingerprints.
 - **The limiter fails closed**: if the counter store (Redis) is down, requests are refused, never served without limits, the same rule every guard follows.
+
+**Update — all four slices built:**
+- **Secrets:** the whole git history (111 commits) has no real key. Testing the scanner like a real mistake showed it **missed a Groq key**; custom rules now catch Groq, Mistral, and committed `.env` files.
+- **Known holes:** 34 advisories in 3 packages (worst: the PDF parser, which reads untrusted uploads) → upgraded to 0; the image's operating system had 2 high issues → security updates at build → 0. Scans run in CI on every push.
+- **Abuse:** 20 requests/min per user, 120 per company, 200,000 tokens/day per company. Live: request 21 → 429; Redis stopped → 503 (fail closed).
+- **Identity:** RS256 tokens (private key signs, public key checks), 15 minutes, key ids for rotation. An old-style token is now refused; so are the classic forgeries, including "algorithm confusion".
+- **Fingerprints:** a separate key per company, so the same question can't link two companies.
+- A slip worth remembering: one commit went out with a failing test because a pipe hid the test's exit status. Fixed in the next commit; commits now run only after every suite's exit status is checked.

@@ -7,8 +7,9 @@
               step, and an ERROR event (tester v0.6.0 T-2)
 
 Nothing raw is stored (Invariant 5): the question is kept as an HMAC (a keyed hash, so the same
-question can be found again without storing it) and as redacted text; every stored text passes
-through `redact`. If recording fails, the caller refuses the request (fail closed, D6).
+question can be found again without storing it; the key is derived per tenant, spec 09 D6) and as
+redacted text; every stored text passes through `redact`. If recording fails, the caller refuses
+the request (fail closed, D6).
 """
 
 import hashlib
@@ -33,15 +34,24 @@ class AuditRecorder:
             raise ValueError("AUDIT_HMAC_KEY is not set (see .env.example)")
         self.db, self._key = db, hmac_key.encode()
 
-    def query_hmac(self, question: str) -> str:
-        return hmac.new(self._key, question.encode(), hashlib.sha256).hexdigest()
+    def query_hmac(self, tenant_id: str, question: str) -> str:
+        """The question's fingerprint within one tenant (spec 09 D6, ISS-058): the key is derived
+        per tenant, so the same question has unrelated fingerprints in two tenants."""
+        tenant_key = hmac.new(self._key, f"tenant:{tenant_id}".encode(), hashlib.sha256).digest()
+        return hmac.new(tenant_key, question.encode(), hashlib.sha256).hexdigest()
 
     def start(self, request_id: str, user: User, question: str) -> None:
         with borrow(self.db) as conn, tenant_scope(conn, user.tenant_id):
             conn.execute(
                 """INSERT INTO requests (id, tenant_id, user_id, query_hmac, query_redacted)
                    VALUES (%s, %s, %s, %s, %s)""",
-                (request_id, user.tenant_id, user.id, self.query_hmac(question), redact(question)),
+                (
+                    request_id,
+                    user.tenant_id,
+                    user.id,
+                    self.query_hmac(user.tenant_id, question),
+                    redact(question),
+                ),
             )
             append_in_transaction(
                 conn, user.tenant_id, [_event(request_id, user, "request", "START")]

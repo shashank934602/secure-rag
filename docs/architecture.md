@@ -293,7 +293,7 @@ Defense in depth — each layer assumes the one before it can fail. Classifiers 
 | Layer | Threat | Control | On failure |
 |-------|--------|---------|------------|
 | Auth | Unauthorized access | JWT (RS256, 15-min expiry), roles/permissions **loaded from DB** each request so revocation is immediate | 401 |
-| Auth | Abuse / cost blow-up | Redis rate limit per user + daily token budget per tenant | 429 |
+| Auth | Abuse / cost blow-up | Redis rate limit per user and per tenant + daily token budget per tenant, checked before any model call; Redis unreachable → refuse | 429 (503 if the limiter is down) |
 | Input | Direct injection / jailbreak | DeBERTa classifier + pattern rules | Refuse, audit `BLOCKED_INJECTION` |
 | Retrieval ★ | Cross-tenant / cross-role leakage | Postgres **RLS** on `tenant_id` (via `SET LOCAL app.tenant_id`) **plus** `allowed_roles && user_roles AND is_active` in the query | Row never returned |
 | Context | Indirect injection hidden in documents | Classifier per chunk (512-token windows); drop flagged chunks | Drop, audit |
@@ -305,7 +305,7 @@ Defense in depth — each layer assumes the one before it can fail. Classifiers 
 | Output | PII / secrets | Same detector as context (reads narrow spaces/odd hyphens) + patterns for keys/tokens | Redact |
 | Output | Ungrounded claims | Grounding judge (different model family from generator) | Retry once → No-Answer |
 | Any | Guard service down / timeout | **Fail closed** | Refuse with `status=error`, audited |
-| Logs/traces | Sensitive data at rest | Store redacted text + HMAC of the raw query (keyed, not a plain hash) | — |
+| Logs/traces | Sensitive data at rest | Store redacted text + HMAC of the raw query (keyed, not a plain hash; the key is derived per tenant, so fingerprints can't link tenants) | — |
 
 The entity allow-list matters: masking every PERSON/ORG/LOCATION — or every work email — in business
 documents would make answers useless. Only the listed sensitive types are masked.

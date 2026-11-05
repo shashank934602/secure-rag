@@ -22,6 +22,8 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 - **RS256 access tokens, 15 minutes** (`app/auth.py`): signed with a private key, checked with the public key; the algorithm is pinned (HS256, `none`, and the HS256-with-the-public-key "algorithm confusion" trick are refused); each token names its key (`kid`) and `JWT_PREVIOUS_PUBLIC_KEY` keeps older tokens valid during a rotation. `make_env.py` generates the key pair with `openssl` (base64 PEM in `.env`); `JWT_SECRET` is no longer used. Live: an old HS256 token is now 401 (ISS-073, closes ISS-047).
 
+- **Per-tenant question fingerprints**: `query_hmac` uses a key derived per tenant, so the same question no longer matches across tenants; requests recorded before this keep their old fingerprints, comparable only among themselves (ISS-074, closes ISS-058).
+
 ### Security
 
 - Upgraded `pypdf` 6.20.0 → 6.21.4 (16 advisories; it parses uploaded PDFs), `filelock` 4.2.0 → 4.2.9 (17), `certifi` → 2026.10.23 (1); pip-audit now reports no known vulnerabilities (ISS-071).

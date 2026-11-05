@@ -63,7 +63,10 @@ def test_a_request_is_recorded_at_the_start_without_its_raw_text(pg: PgUrls) -> 
         pg, "SELECT status, query_hmac, query_redacted FROM requests WHERE id = %s", (request_id,)
     )
     assert status == "started"
-    assert query_hmac == hmac.new(KEY.encode(), question.encode(), hashlib.sha256).hexdigest()
+    tenant_key = hmac.new(KEY.encode(), f"tenant:{alice.tenant_id}".encode(), hashlib.sha256)
+    assert (
+        query_hmac == hmac.new(tenant_key.digest(), question.encode(), hashlib.sha256).hexdigest()
+    )
     assert query_redacted == "My IBAN is [IBAN], how do I claim expenses?"
     assert _rows(pg, "SELECT stage, decision FROM audit_events") == [("request", "START")]
 
@@ -155,3 +158,14 @@ def test_nothing_raw_is_stored_anywhere(pg: PgUrls) -> None:
     )
     assert IBAN not in everything and "GB82" not in everything
     assert "sk-abcdefghij" not in everything
+
+
+def test_the_same_question_has_unrelated_fingerprints_in_two_tenants() -> None:
+    # Tester v0.6.0 T-7 / ISS-058: one global key let anyone with the database link tenants.
+    recorder = AuditRecorder(None, KEY)
+    question = "How many days of annual leave do I get?"
+    aldermoor, northgate = (
+        recorder.query_hmac(t, question) for t in ("t-aldermoor", "t-northgate")
+    )
+    assert aldermoor != northgate
+    assert recorder.query_hmac("t-aldermoor", question) == aldermoor  # still findable in a tenant
