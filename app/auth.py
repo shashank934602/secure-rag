@@ -29,6 +29,7 @@ from app.db import borrow, connect, tenant_scope
 from app.domain import User
 
 ALGORITHM = "RS256"
+CLOCK_SLACK_S = 60  # tolerated difference between servers' clocks
 
 
 class AuthError(Exception):
@@ -52,6 +53,7 @@ class TokenKeys:
 
     private_pem: bytes | None  # None where tokens are only checked
     public_pems: dict[str, bytes] = field(default_factory=dict)  # kid → public key
+    max_ttl_s: int = 900  # the longest lifetime accepted, whatever a token claims
 
     @property
     def signing_kid(self) -> str:
@@ -60,8 +62,11 @@ class TokenKeys:
         return next(iter(self.public_pems))  # the current key comes first
 
     @classmethod
-    def from_pems(cls, private_pem: bytes | None, *public_pems: bytes) -> "TokenKeys":
-        return cls(private_pem, {key_id(pem): pem.strip() for pem in public_pems if pem})
+    def from_pems(
+        cls, private_pem: bytes | None, *public_pems: bytes, max_ttl_s: int = 900
+    ) -> "TokenKeys":
+        pems = {key_id(pem): pem.strip() for pem in public_pems if pem}
+        return cls(private_pem, pems, max_ttl_s)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "TokenKeys":
@@ -73,7 +78,9 @@ class TokenKeys:
         previous = (
             decode(settings.jwt_previous_public_key) if settings.jwt_previous_public_key else b""
         )
-        return cls.from_pems(private, decode(settings.jwt_public_key), previous)
+        return cls.from_pems(
+            private, decode(settings.jwt_public_key), previous, max_ttl_s=settings.token_ttl_s
+        )
 
 
 def issue_token(
@@ -97,8 +104,13 @@ def verify_token(token: str, *, keys: TokenKeys) -> Claims:
         # algorithms=[RS256] pins the algorithm: an HS256 token (even one "signed" with the
         # public key as a shared secret) or an unsigned "alg: none" token is refused.
         payload = jwt.decode(
-            token, public, algorithms=[ALGORITHM], options={"require": ["sub", "tenant", "exp"]}
+            token,
+            public,
+            algorithms=[ALGORITHM],
+            options={"require": ["sub", "tenant", "iat", "exp"]},
         )
+        if payload["exp"] - payload["iat"] > keys.max_ttl_s + CLOCK_SLACK_S:
+            raise AuthError("lifetime too long")  # 15 minutes is enforced here too (T-6)
         return Claims(
             user_id=str(uuid.UUID(payload["sub"])), tenant_id=str(uuid.UUID(payload["tenant"]))
         )

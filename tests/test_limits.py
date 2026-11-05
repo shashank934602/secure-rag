@@ -58,16 +58,49 @@ def test_a_tenant_limit_covers_all_its_users_but_not_other_tenants() -> None:
 def test_the_token_budget_stops_a_tenant_until_midnight_utc() -> None:
     clock = Clock()
     limits = _limits(clock, budget=1000)
-    limits.check_budget(ALICE)
-    limits.spend(ALICE, 1000)
+    reserved = limits.reserve(ALICE)
+    limits.settle(ALICE, reserved, 1000)  # the answer used the whole budget
 
     with pytest.raises(LimitExceeded) as refused:
-        limits.check_budget(BOB)  # same tenant: same budget
+        limits.reserve(BOB)  # same tenant: same budget
     assert refused.value.retry_after_s == 86_400 - int(clock.now % 86_400)
-    limits.check_budget(NED)  # other tenant unaffected
+    limits.reserve(NED)  # other tenant unaffected
 
     clock.now += refused.value.retry_after_s  # midnight UTC
-    limits.check_budget(ALICE)
+    limits.reserve(ALICE)
+
+
+def test_simultaneous_questions_cannot_all_slip_under_the_budget() -> None:
+    # Tester v0.9.0 T-2: with "check, then count after", 4 parallel questions all passed a
+    # 1-token budget. Booking first, in one step, lets only the first one through.
+    import threading
+
+    limits = _limits(Clock(), budget=1)
+    outcomes = []
+
+    def ask() -> None:
+        try:
+            limits.reserve(ALICE)
+            outcomes.append("allowed")
+        except LimitExceeded:
+            outcomes.append("refused")
+
+    threads = [threading.Thread(target=ask) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert sorted(outcomes) == ["allowed"] + ["refused"] * 7
+
+
+def test_a_booking_is_corrected_to_what_was_really_used() -> None:
+    limits = _limits(Clock(), budget=10_000)
+    reserved = limits.reserve(ALICE)  # books 6,000
+    limits.settle(ALICE, reserved, 2500)  # the answer used 2,500
+    key = limits._budget_key(ALICE)
+    assert limits.counter.get(key) == 2500
+    limits.settle(ALICE, limits.reserve(ALICE), 0)  # failed before answering: refunded
+    assert limits.counter.get(key) == 2500
 
 
 # --- through the API ---------------------------------------------------------------------------
@@ -96,7 +129,7 @@ def test_the_api_answers_429_with_retry_after_when_a_user_floods_it() -> None:
 
 def test_a_tenant_past_its_budget_gets_429_and_no_model_call() -> None:
     limits = _limits(Clock(), budget=10)
-    limits.spend(ALICE, 10)
+    limits.settle(ALICE, limits.reserve(ALICE), 10)
     answerer = _answerer()  # no scripted replies: any model call would fail
     app = create_app(
         build=lambda: answerer,
@@ -112,15 +145,34 @@ def test_a_tenant_past_its_budget_gets_429_and_no_model_call() -> None:
     assert answerer.chat_model.calls == []
 
 
+def test_a_failed_answer_gives_its_booking_back() -> None:
+    limits = _limits(Clock(), budget=100_000)
+    answerer = _answerer()  # no scripted replies: the model call fails → 503
+    app = create_app(
+        build=lambda: answerer,
+        health_check=lambda: None,
+        recorder=NullRecorder,
+        authenticator=lambda: _authenticate,
+        limits=lambda: limits,
+    )
+    with TestClient(app, headers={"Authorization": "Bearer good-token"}) as client:
+        assert client.post("/v1/ask", json={"question": "How much leave?"}).status_code == 503
+    assert limits.counter.get(limits._budget_key(ALICE)) == 0
+
+
 def test_a_broken_limiter_refuses_instead_of_serving_unlimited() -> None:
     class Down:
         def check_rate(self, user):
             raise LimiterUnavailable("ConnectionError")
 
+        def ping(self):
+            raise LimiterUnavailable("ConnectionError")
+
     with _client(Down()) as client:
         response = client.post("/v1/ask", json={"question": "Leave?"})
         audit = client.get("/v1/audit/verify")
-    assert (response.status_code, audit.status_code) == (503, 503)
+        health = client.get("/healthz")  # tester v0.9.0 T-4: not "healthy" while refusing all
+    assert (response.status_code, audit.status_code, health.status_code) == (503, 503, 503)
 
 
 def test_rate_limits_cover_every_authenticated_route() -> None:

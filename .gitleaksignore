@@ -7,3 +7,7 @@ d3b0a45f4e22ace7a9b1fe6e7866d2632c68b5d9:tests/test_acl.py:generic-api-key:26
 576d18775ac502f9981cda1e01489bc1b12d8de2:tests/test_api_db.py:generic-api-key:23
 576d18775ac502f9981cda1e01489bc1b12d8de2:tests/test_auth.py:generic-api-key:11
 576d18775ac502f9981cda1e01489bc1b12d8de2:tests/test_auth_db.py:generic-api-key:14
+# Test fixtures with fake database passwords (kept-pw, hunter2-secret), flagged by the database-url rule (tester v0.9.0 T-1).
+127c5e49b3e88c211cab3525fc8a6546727d84f8:tests/test_make_env.py:database-url-password:50
+c86c0eafdeb89c088a6fbdb31f384022cb0a3be3:tests/test_make_env.py:database-url-password:37
+3fcdcc23070dc5fdb46fc5543e8d0d6652170109:tests/test_db_pool.py:database-url-password:9

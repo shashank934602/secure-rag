@@ -724,3 +724,13 @@ loaded this log automatically, so the rule survived the new session.
 - **Identity:** RS256 tokens (private key signs, public key checks), 15 minutes, key ids for rotation. An old-style token is now refused; so are the classic forgeries, including "algorithm confusion".
 - **Fingerprints:** a separate key per company, so the same question can't link two companies.
 - A slip worth remembering: one commit went out with a failing test because a pipe hid the test's exit status. Fixed in the next commit; commits now run only after every suite's exit status is checked.
+
+**Update — the tester attacked it, and `v0.9.0`:**
+- Every control held: 31 forged tokens (unsigned, wrong key, "algorithm confusion", tampered, expired, cross-company) were all refused; limits and budget behaved exactly as claimed.
+- It still found two real gaps. **The scanner missed our own key format** (a base64-encoded private key, exactly how `.env` stores the signing key), so new rules catch it plus three other kinds. **Simultaneous questions could all slip under the budget** ("check, then count after"), so each question now *books* tokens in one step before the model call, and the booking is corrected afterwards. 8 parallel questions vs a 1-token budget → exactly 1 allowed.
+- Lesson: **a check and an update that are separate steps can be raced.** The fix is to make them one step (an atomic increment), not to check harder.
+
+**Still unclear:** explain-back questions for Lessons 1b–9 (study chat).
+
+**Next session starts with:** the owner's answers for Stage A (ISS-075: users, hosting, budget, domain, region), the GitHub settings (ISS-063), and the demo video (ISS-069).
+

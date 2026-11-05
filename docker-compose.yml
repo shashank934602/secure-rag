@@ -39,7 +39,10 @@ services:
 
   redis: # rate-limit and token-budget counters, shared by every API process (spec 09 D2)
     image: redis:7.2.7-alpine # pinned; 7.2 is the last BSD-licensed line
-    command: ["redis-server", "--save", "", "--appendonly", "no"] # counters only: nothing to keep
+    # Kept on disk, so a restart doesn't hand every tenant a fresh daily budget (tester v0.9.0 T-2).
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
@@ -85,3 +88,4 @@ services:
 volumes:
   pgdata:
   hf-cache:
+  redis-data:

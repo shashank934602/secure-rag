@@ -4,13 +4,15 @@ Update after every meaningful change. Describe what is actually built, not what 
 
 ## Current phase
 
-**All eight phases done: released `v0.8.0` on 2026-11-04** (Phase 8: one-command demo stack, web page, README). Next: the production stages (`docs/production-plan.md`) and the owner's GitHub settings (ISS-063) and demo video (ISS-069). Phase 7 `v0.7.0`, Phase 6 `v0.6.0`, Phase 5 `v0.5.0`, Phase 4 `v0.4.0`, Phase 3 `v0.3.0`, Phase 2 `v0.2.0`, Phase 1 `v0.1.0`.
+**Production Stage B (single machine) done: released `v0.9.0` on 2026-11-05**: supply-chain scanning in CI, rate limits and an atomic daily token budget in Redis (fail closed), RS256 15-minute tokens, per-tenant question fingerprints. Next: Stage A (server, domain, HTTPS) once the owner decides D-P1 … D-P5 (ISS-075); the owner's GitHub settings (ISS-063) and demo video (ISS-069). Phases 1–8 released `v0.1.0` … `v0.8.0`.
 
 Phase 1 history: basic RAG pipeline (`context/feature-specs/01-basic-rag-pipeline.md`). Spec grilled and decided (D1–D16).
 All 5 slices built; 45 offline tests pass; first real run done with Mistral embeddings (ISS-014 closed); ISS-015 fixed by the learner (2026-10-19). Golden rerun passed (6/7, 3/3); live tests 2/2; Mistral chat swap works with `ministral-8b-latest` (ISS-018). Phase 1 closed. **Phase 2 started** (decisions agreed, spec 02). Phase 0 leftover: ISS-005.
 
 ## Completed
 
+- **Production hardening released — `v0.9.0`** (2026-11-05, ISS-071 … ISS-074)
+  - CI job Supply chain (gitleaks with project rules, pip-audit, trivy); limits per user/tenant and a booked daily token budget in persisted Redis, 503 when it's down; RS256 tokens with `kid`, 15 minutes enforced at issue and check; per-tenant HMAC. Tester: release with known issues; T-1, T-2, T-4, T-6 fixed. 267 offline, 108 db tests.
 - **Phase 8 released — `v0.8.0`** (2026-11-04, ISS-065 … ISS-068)
   - `docker compose up -d --wait`: db → migrate → seed (both companies, idempotent, tokens) → api with a web page at `/`; `scripts/make_env.py`; README with results and limits; demo-video script. Tester: fresh clone → first cited answer in 6.5 min; all README demos as described; no secrets in the image, non-root, 127.0.0.1 only. 256 offline, 103 db tests; CI green.
 - **Phase 7 released — `v0.7.0`** (2026-11-03, ISS-059 … ISS-062)

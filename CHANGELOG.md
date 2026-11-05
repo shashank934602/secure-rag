@@ -13,6 +13,15 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-11-05 — Production hardening (Stage B, single machine)
+
+The first production stage that needs no server. Done-when passes: CI blocks committed secrets (now including this
+project's own key formats) and known-vulnerable dependencies or images; a flooding user gets 429; a tenant past its daily
+token budget gets 429 before any model call, even with simultaneous questions; tokens are RS256 for 15 minutes; Redis down
+means 503. The independent test (`docs/test-reports/v0.9.0.md`): **release with known issues, no critical or high**; every
+control held when attacked (31 forged tokens all 401); it found two medium gaps, fixed below, and two observations (one
+fixed, one → ISS-076). Stage A (server, domain, HTTPS) waits for the owner's decisions (ISS-075).
+
 ### Added
 
 - Production hardening spec (`context/feature-specs/09-production-hardening.md`), ISS-071 … ISS-075 (ISS-075: the owner's decisions before Stage A).
@@ -23,6 +32,14 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - **RS256 access tokens, 15 minutes** (`app/auth.py`): signed with a private key, checked with the public key; the algorithm is pinned (HS256, `none`, and the HS256-with-the-public-key "algorithm confusion" trick are refused); each token names its key (`kid`) and `JWT_PREVIOUS_PUBLIC_KEY` keeps older tokens valid during a rotation. `make_env.py` generates the key pair with `openssl` (base64 PEM in `.env`); `JWT_SECRET` is no longer used. Live: an old HS256 token is now 401 (ISS-073, closes ISS-047).
 
 - **Per-tenant question fingerprints**: `query_hmac` uses a key derived per tenant, so the same question no longer matches across tenants; requests recorded before this keep their old fingerprints, comparable only among themselves (ISS-074, closes ISS-058).
+
+### Fixed (from the independent test)
+
+- The secret scanner missed 4 of 21 realistic fakes: OpenAI project keys (`sk-proj-…`), database URLs with a password, base64-encoded private keys (the format of this project's own `JWT_PRIVATE_KEY`), and `*.env` file names; new rules catch all four (test fixtures ignored by fingerprint) (T-1).
+- The token budget could be overshot by simultaneous questions (check before, count after): each question now **books** tokens in one atomic step before the model call and the booking is settled to the real use afterwards (refunded if the answer failed); 8 parallel questions against a 1-token budget → 1 allowed. Redis now keeps its data on disk, so a restart no longer resets every tenant's day (T-2).
+- `/healthz` reports 503 while the limiter is down (every request would be refused), so the container shows unhealthy (T-4).
+- Tokens claiming a lifetime longer than `TOKEN_TTL_S` (+60 s clock slack) are refused when checked, not only short when issued (T-6).
+- Stale notes: the 127.0.0.1 binding now waits for the Stage A proxy (not rate limiting); `.env.example` lists the limit settings; the retired `JWT_SECRET` line in existing `.env` files can be deleted (T-3).
 
 ### Security
 

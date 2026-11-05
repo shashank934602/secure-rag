@@ -18,8 +18,29 @@ secretGroup = 1
 keywords = ["mistral"]
 
 [[rules]]
+id = "openai-project-key"
+description = "OpenAI project key (sk-proj-…); the default OpenAI rule misses this format"
+regex = '''\bsk-(?:proj|svcacct|admin)-[A-Za-z0-9_-]{40,}'''
+keywords = ["sk-proj-", "sk-svcacct-", "sk-admin-"]
+
+[[rules]]
+id = "database-url-password"
+description = "A database URL with a password in it"
+regex = '''\b(?:postgres(?:ql)?|mysql|redis|mongodb)(?:\+\w+)?://[^:\s/@]+:([^@\s<>${}]{6,})@'''
+secretGroup = 1
+keywords = ["postgres", "mysql", "redis", "mongodb"]
+[rules.allowlist]
+regexes = ['''^ci-throwaway''', '''^test-''']  # CI's per-run container, test fixtures
+
+[[rules]]
+id = "base64-private-key"
+description = "A base64-encoded PEM private key (the format JWT_PRIVATE_KEY uses in .env)"
+regex = '''LS0tLS1CRUdJTi[A-Za-z0-9+/]{0,40}(?:UFJJVkFURS|QUklWQVRF|SVZBVEUg)[A-Za-z0-9+/=]{200,}'''
+keywords = ["ls0tls1crudjti"]
+
+[[rules]]
 id = "dotenv-file"
 description = "A committed .env file (only .env.example belongs in git)"
-path = '''(^|/)\.env(\.[\w-]+)?$'''
+path = '''(^|/)(\.env(\.[\w-]+)?|[\w.-]+\.env)$'''
 [rules.allowlist]
 paths = ['''(^|/)\.env\.example$''']

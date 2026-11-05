@@ -10,7 +10,7 @@
     GET  /          a small demo page: paste a token, ask, see the answer and its sources
 
 Tokens: `python -m app.auth token --tenant Aldermoor --email alice@aldermoor.example.com`.
-Still bound to 127.0.0.1 until rate limiting exists (ISS-040).
+Bound to 127.0.0.1 until the HTTPS proxy of production Stage A (ISS-075); limits: app/limits.py.
 Handlers stay thin: validate input, call the answerer, shape the output.
 """
 
@@ -238,52 +238,63 @@ def create_app(
         answerer, audit = request.app.state.answerer, request.app.state.recorder
         line = functools.partial(_log_request, request_id, user, started)
         limits = request.app.state.limits
-        try:  # before any model call: a tenant past today's budget costs nothing more (spec 09 D3)
-            limits.check_budget(user)
+        try:  # book tokens before any model call; past today's budget → 429 (spec 09 D3)
+            reserved = limits.reserve(user)
         except LimitExceeded as error:
             line("rate_limited", reason="token_budget")
             return _too_many(error)
         except LimiterUnavailable:
             line("error", error="limiter")
             return _unavailable()  # fail closed (spec 09 D4)
-        try:  # recorded before anything runs, so even a crash leaves a trace (spec 06 D5)
-            audit.start(request_id, user, body.question)
-        except Exception as error:
-            log.error("audit start failed request_id=%s error=%s", request_id, type(error).__name__)
-            line("error", error="audit_start")
-            return _unavailable()  # no audit, no answer (D6)
-        try:
-            result = answerer.answer(body.question, scope=user.scope)
-        except Exception as error:
-            # Log the failure type only: never the question (Invariant 5) or the error text,
-            # which can contain keys or internal details. The caller gets a generic message.
-            log.error("ask failed request_id=%s error=%s", request_id, type(error).__name__)
-            progress = getattr(error, "progress", None)  # what ran before it failed (T-2)
+        used = 0  # tokens really spent; the booking is corrected to this on every way out
+
+        def answer_and_record() -> AskResponse | JSONResponse:
+            try:  # recorded before anything runs, so even a crash leaves a trace (spec 06 D5)
+                audit.start(request_id, user, body.question)
+            except Exception as error:
+                log.error(
+                    "audit start failed request_id=%s error=%s", request_id, type(error).__name__
+                )
+                line("error", error="audit_start")
+                return _unavailable()  # no audit, no answer (D6)
             try:
-                audit.fail(request_id, user, type(error).__name__, latency_ms=_ms(started),
-                           progress=progress)  # fmt: skip
-            except Exception as audit_error:
-                log.error("audit fail failed request_id=%s error=%s", request_id,
-                          type(audit_error).__name__)  # fmt: skip
-            line("error", progress.timings if progress else {}, error=type(error).__name__,
-                 failed_step=progress.failed_step if progress else None)  # fmt: skip
-            return _unavailable()
-        judge = JUDGE_PROMPT_VERSION if answerer.grounding_judge is not None else None
+                result = answerer.answer(body.question, scope=user.scope)
+            except Exception as error:
+                # Log the failure type only: never the question (Invariant 5) or the error text,
+                # which can contain keys or internal details. The caller gets a generic message.
+                log.error("ask failed request_id=%s error=%s", request_id, type(error).__name__)
+                progress = getattr(error, "progress", None)  # what ran before it failed (T-2)
+                try:
+                    audit.fail(request_id, user, type(error).__name__, latency_ms=_ms(started),
+                               progress=progress)  # fmt: skip
+                except Exception as audit_error:
+                    log.error("audit fail failed request_id=%s error=%s", request_id,
+                              type(audit_error).__name__)  # fmt: skip
+                line("error", progress.timings if progress else {}, error=type(error).__name__,
+                     failed_step=progress.failed_step if progress else None)  # fmt: skip
+                return _unavailable()
+            nonlocal used
+            used = total_tokens(result.usage)
+            judge = JUDGE_PROMPT_VERSION if answerer.grounding_judge is not None else None
+            try:
+                audit.finish(request_id, user, result, latency_ms=_ms(started),
+                             model=answerer.model_label, judge_prompt_version=judge)  # fmt: skip
+            except Exception as error:
+                log.error(
+                    "audit finish failed request_id=%s error=%s", request_id, type(error).__name__
+                )
+                line("error", result.timings, error="audit_finish")
+                return _unavailable()  # an answer that can't be explained isn't given (D6)
+            line(result.status, result.timings)
+            return _response(result, request_id)
+
         try:
-            audit.finish(request_id, user, result, latency_ms=_ms(started),
-                         model=answerer.model_label, judge_prompt_version=judge)  # fmt: skip
-        except Exception as error:
-            log.error(
-                "audit finish failed request_id=%s error=%s", request_id, type(error).__name__
-            )
-            line("error", result.timings, error="audit_finish")
-            return _unavailable()  # an answer that can't be explained isn't given (D6)
-        try:  # count what this answer cost against the tenant's day (spec 09 D3)
-            limits.spend(user, total_tokens(result.usage))
-        except LimiterUnavailable:
-            log.error("token budget update failed request_id=%s", request_id)
-        line(result.status, result.timings)
-        return _response(result, request_id)
+            return answer_and_record()
+        finally:
+            try:
+                limits.settle(user, reserved, used)
+            except LimiterUnavailable:
+                log.error("token budget update failed request_id=%s", request_id)
 
     @app.patch("/v1/documents/{doc_id}/acl", responses=_error_docs(401, 403, 404, 413, 429, 503))
     def update_acl(
@@ -354,9 +365,10 @@ def create_app(
         return _audit_call(lambda: verify_tenant(get_database(), user))
 
     @app.get("/healthz", responses=_error_docs(503))
-    def healthz() -> JSONResponse:
+    def healthz(request: Request) -> JSONResponse:
         try:
             health_check()
+            request.app.state.limits.ping()  # Redis down = every request refused: not healthy
         except Exception as error:
             log.error("healthz failed error=%s", type(error).__name__)
             return JSONResponse(
@@ -365,8 +377,8 @@ def create_app(
         return JSONResponse(status_code=200, content={"status": "ok"})
 
     @app.head("/healthz", include_in_schema=False)  # for load balancers (tester T-3)
-    def healthz_head() -> JSONResponse:
-        return healthz()
+    def healthz_head(request: Request) -> JSONResponse:
+        return healthz(request)
 
     return app
 

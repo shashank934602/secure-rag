@@ -53,9 +53,10 @@ def test_counters_expire_on_their_own(redis_url) -> None:
 
 def test_the_budget_is_shared_through_redis(redis_url) -> None:
     url, _ = redis_url
-    _limits(url).spend(ALICE, 1000)
+    first = _limits(url)
+    first.settle(ALICE, first.reserve(ALICE), 1000)
     with pytest.raises(LimitExceeded):
-        _limits(url).check_budget(ALICE)
+        _limits(url).reserve(ALICE)
 
 
 def test_redis_down_means_refuse_not_unlimited(redis_url) -> None:
@@ -65,4 +66,6 @@ def test_redis_down_means_refuse_not_unlimited(redis_url) -> None:
     with pytest.raises(LimiterUnavailable):
         limits.check_rate(ALICE)
     with pytest.raises(LimiterUnavailable):
-        limits.check_budget(ALICE)
+        limits.reserve(ALICE)
+    with pytest.raises(LimiterUnavailable):
+        limits.ping()

@@ -126,3 +126,10 @@ def test_keys_load_from_settings_as_base64_pem() -> None:
         TokenKeys.from_settings(
             Settings(_env_file=None, jwt_public_key="")
         )  # not this machine's .env
+
+
+def test_a_token_claiming_a_long_life_is_refused() -> None:
+    # Tester v0.9.0 T-6: a validly signed token with a one-year expiry used to pass.
+    token = issue_token(USER, TENANT, keys=KEYS, ttl_s=365 * 86_400)
+    with pytest.raises(AuthError):
+        verify_token(token, keys=KEYS)

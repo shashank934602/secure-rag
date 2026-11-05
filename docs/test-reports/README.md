@@ -12,3 +12,4 @@ logged as an issue (`context/issue-tracker.md`), and the triage is recorded in `
 | [v0.6.0-retest.md](v0.6.0-retest.md) | Phase 6 fixes (commit `4732b21`) | release | T-1, T-2, T-4, T-5 confirmed fixed on a real server; no regressions, no new findings |
 | [v0.7.0.md](v0.7.0.md) | Phase 7 eval gate | release with known issues (no critical/high) | T-1, T-2, T-3, T-6, T-7 fixed; T-4, T-5, T-8 hardened (CODEOWNERS, step-level keys) with the rest → ISS-063; T-9, T-10 lesson corrected |
 | [v0.8.0.md](v0.8.0.md) | Phase 8 ship it | release with known issues (no critical/high); fresh clone → first answer 6.5 min | T-1, T-2, T-4 fixed; T-3 → ISS-070 (and README build time); T-5 observations |
+| [v0.9.0.md](v0.9.0.md) | Production hardening (Stage B) | release with known issues (no critical/high); 31 forged tokens all 401 | T-1, T-2, T-4, T-6 fixed; T-3 docs fixed; T-5 → ISS-076; T-7 note |

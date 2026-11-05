@@ -1,7 +1,10 @@
 """Rate limits and the daily token budget (spec 09 D2–D4, D7; ISS-072).
 
     rate limit     fixed one-minute windows: per user, then per tenant → 429 + Retry-After
-    token budget   tokens a tenant's answers used today (UTC); at the budget → 429 until midnight
+    token budget   tokens a tenant's answers used today (UTC); at the budget → 429 until midnight.
+                   Each question first *reserves* tokens in one atomic step (so simultaneous
+                   questions can't all slip under the budget, tester v0.9.0 T-2), then the
+                   reservation is corrected to what the answer really used.
 
 Counters live in Redis (`REDIS_URL`) so several API processes share them; without it an in-memory
 counter is used, which is correct for one process (development, tests). If the counter store
@@ -95,11 +98,12 @@ class Limits:
         per_user_per_min: int,
         per_tenant_per_min: int,
         tenant_daily_tokens: int,
+        reservation: int = 6000,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self.counter, self.clock = counter, clock
         self.per_user, self.per_tenant = per_user_per_min, per_tenant_per_min
-        self.budget = tenant_daily_tokens
+        self.budget, self.reservation = tenant_daily_tokens, reservation
 
     def check_rate(self, user: User) -> None:
         """Count this request; raise LimitExceeded if the user or the tenant is over its limit."""
@@ -112,17 +116,26 @@ class Limits:
                 "Too many requests from your organisation; try again shortly", retry
             )
 
-    def check_budget(self, user: User) -> None:
-        """Raise LimitExceeded if the tenant used today's token budget (before any model call)."""
-        if self.counter.get(self._budget_key(user)) >= self.budget:
+    def reserve(self, user: User) -> int:
+        """Book tokens for one answer before any model call; LimitExceeded if the tenant had
+        already used today's budget. Returns the amount booked (settle it afterwards)."""
+        key = self._budget_key(user)
+        after = self.counter.incr(key, self.reservation, 2 * DAY)  # one atomic step
+        if after - self.reservation >= self.budget:
+            self.counter.incr(key, -self.reservation, 2 * DAY)  # give the booking back
             raise LimitExceeded(
                 "Your organisation's daily usage limit is reached", self._to_midnight()
             )
+        return self.reservation
 
-    def spend(self, user: User, tokens: int) -> None:
-        """Add an answer's tokens to the tenant's count for today."""
-        if tokens > 0:
-            self.counter.incr(self._budget_key(user), tokens, 2 * DAY)
+    def settle(self, user: User, reserved: int, used: int) -> None:
+        """Correct a booking to what the answer really used (0 if it failed before answering)."""
+        if used != reserved:
+            self.counter.incr(self._budget_key(user), used - reserved, 2 * DAY)
+
+    def ping(self) -> None:
+        """Raise LimiterUnavailable if the counter store can't be reached (health check)."""
+        self.counter.get("health:ping")
 
     def _count(self, key: str) -> int:
         return self.counter.incr(key, 1, 2 * MINUTE)
@@ -139,8 +152,11 @@ class NoLimits:
     """No limits at all: only for the offline eval runs, never the API's default."""
 
     def check_rate(self, user: User) -> None: ...
-    def check_budget(self, user: User) -> None: ...
-    def spend(self, user: User, tokens: int) -> None: ...
+    def reserve(self, user: User) -> int:
+        return 0
+
+    def settle(self, user: User, reserved: int, used: int) -> None: ...
+    def ping(self) -> None: ...
 
 
 def total_tokens(usage: dict[str, dict[str, int]]) -> int:
