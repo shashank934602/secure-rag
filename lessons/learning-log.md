@@ -734,3 +734,24 @@ loaded this log automatically, so the rule survived the new session.
 
 **Next session starts with:** the owner's answers for Stage A (ISS-075: users, hosting, budget, domain, region), the GitHub settings (ISS-063), and the demo video (ISS-069).
 
+
+## 2026-11-06 — Seeing it run: the flow, tokens, and a live demo
+
+**Where we are:** `v0.9.0` released; Stage A (a real server) still waits on the owner's decisions (ISS-075). Today was a hands-on look at the running app on `localhost`, no code changes.
+
+**What we learned:**
+- **Why not Vercel:** Vercel runs short-lived serverless functions; our API keeps two local AI models (classifier, reranker) loaded in memory and ships as one Docker image. Platforms that run the image as it is (Render, Railway, Fly.io) give the same push-to-deploy feel without splitting the app.
+- **The flow of one question:** token check → rate limit and budget → audit opens → input guard → search locked to the tenant and the user's roles → reranker → context guard → the model writes with citations → output checks and grounding judge → audit closes.
+- **Two meanings of "token":** an *access token* (a signed, 15-minute login pass, holding only ids, never roles) and an *AI token* (about ¾ of a word, what providers charge for and what the daily budget counts).
+
+**How we learned it:** decoded a real access token (header, payload, signature); ran the README demo against the local API:
+- alice: annual leave → 25 days, cited; London hotel → £190, cited; salary band → "I don't know" (HR-only, never retrieved); "ignore your rules…" → refused in 0.0 s, before any model call.
+- harriet (HR): salary band → Band C, £42,000–£52,000, cited. Same question, different roles, different answer.
+- ned (Northgate): annual leave → 28 days from Northgate's own policy, never Aldermoor's.
+- alice's token with one character changed → 401.
+
+**What I can now explain:** why the salary refusal is the database's doing, not the model's; what is inside a JWT and why editing it fails.
+
+**Still unclear:** explain-back questions for Lessons 1b–9 (study chat).
+
+**Next session starts with:** the hosting comparison (Render / Railway / Fly.io) to settle ISS-075 decisions 2 and 3; then ISS-063 (GitHub settings) and ISS-069 (demo video).
